@@ -11,7 +11,7 @@ class InstanceVerificator:
         
     def verify(self):
         """Effectue toutes les vérifications"""
-        print(f"📋 Vérification de l'instance : {os.path.basename(self.filepath)}\n")
+        print(f"Vérification de l'instance : {os.path.basename(self.filepath)}\n")
         
         # 1. Vérifications structurelles
         if not self.check_file_exists():
@@ -104,7 +104,7 @@ class InstanceVerificator:
             
             return True
         except Exception as e:
-            self.errors.append(f"❌ Erreur lors du chargement : {str(e)}")
+            self.errors.append(f"Erreur lors du chargement : {str(e)}")
             return False
     
     def check_minimum_elements(self):
@@ -119,13 +119,13 @@ class InstanceVerificator:
         
         for key, min_val, name in checks:
             if self.data[key] < min_val:
-                self.errors.append(f"❌ Au moins 1 {name} requis, trouvé : {self.data[key]}")
+                self.errors.append(f"Au moins 1 {name} requis, trouvé : {self.data[key]}")
             else:
                 print(f"✓ {name} : {self.data[key]}")
     
     def check_validity(self):
         """Vérifie la validité des données"""
-        print("\n🔍 Vérifications de validité :")
+        print("\n Vérifications de validité :")
         
         # Garages utilisés existent
         vehicles = self.data['vehicles']
@@ -158,7 +158,7 @@ class InstanceVerificator:
                 break
         
         if not total_demand_exists:
-            self.warnings.append("⚠ Aucune demande dans les stations")
+            self.warnings.append(" Aucune demande dans les stations")
         else:
             print("✓ Au moins une station avec demande")
         
@@ -199,7 +199,7 @@ class InstanceVerificator:
     
     def check_geometry(self):
         """Vérifie les coordonnées géométriques"""
-        print("\n🗺️ Vérifications géométriques :")
+        print("\n🗺 Vérifications géométriques :")
         
         # Vérifier NaN/Inf
         all_data = [self.data['depots'], self.data['garages'], self.data['stations']]
@@ -217,9 +217,9 @@ class InstanceVerificator:
         
         # Coordonnées >= 0
         if np.all(depots[:, 1:3] >= 0) and np.all(garages[:, 1:3] >= 0) and np.all(stations[:, 1:3] >= 0):
-            print("✓ Coordonnées non-négatives")
+            print("Coordonnées non-négatives")
         else:
-            self.warnings.append("⚠ Coordonnées négatives détectées")
+            self.warnings.append("Coordonnées négatives détectées")
         
         # Capacités > 0
         vehicles = self.data['vehicles']
@@ -242,7 +242,7 @@ class InstanceVerificator:
             print("\n✅ Aucune erreur critique !")
         
         if self.warnings:
-            print(f"\n⚠️ {len(self.warnings)} avertissement(s) :")
+            print(f"\n️ {len(self.warnings)} avertissement(s) :")
             for warning in self.warnings:
                 print(f"  {warning}")
         
@@ -257,7 +257,7 @@ class InstanceVerificator:
 def main():
     if len(sys.argv) < 2:
         print("Usage: python instance_verificator.py <filepath>")
-        print("Exemple: python instance_verificator.py Instances/MPVRP_3_s3_d1_p2.dat")
+        print("Exemple: python instance_verificator.py instances/MPVRP_3_s3_d1_p2.dat")
         return
     
     filepath = sys.argv[1]

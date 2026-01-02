@@ -21,9 +21,9 @@ def generer_instance():
     
     # Nom du fichier selon la nomenclature demandée
     filename = f"MPVRP_{id_inst}_s{nb_s}_d{nb_d}_p{nb_p}.dat"
-    instances_dir = "Instances"
+    instances_dir = "../../data/instances"
     
-    # Créer le dossier Instances s'il n'existe pas
+    # Créer le dossier instances s'il n'existe pas
     if not os.path.exists(instances_dir):
         os.makedirs(instances_dir)
     
