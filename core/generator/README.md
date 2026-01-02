@@ -49,4 +49,4 @@ Table stations (avec demandes)
 python instance_provider.py
 ```
 
-Suivre les instructions pour saisir les paramètres. Le fichier est créé dans `./Instances/`
+Suivre les instructions pour saisir les paramètres. Le fichier est créé dans `../../data/instances/` (relatif au dossier `core/generator/`)
