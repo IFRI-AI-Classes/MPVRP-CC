@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Données - MPVRP-CC{% endblock %}
+
+{% block content %}
+<div class="content-section">
+    <div class="instances-header">
+        <h1>Instances</h1>
+        {% if instances %}
+        <a href="/download-all" class="btn-download-all">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+            </svg>
+            Télécharger tout (.zip)
+        </a>
+        {% endif %}
+    </div>
+
+    <p>
+        Cette page met à disposition les instances de test standard pour le problème MPVRP-CC.
+        Ces fichiers sont au format <code>.dat</code> décrit dans la section <a href="/specifications">Spécifications Techniques</a>.
+    </p>
+
+    <div class="info-box">
+        <svg class="info-box-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <p>Utilisez le bouton <strong>"Télécharger tout"</strong> pour obtenir l'ensemble des instances dans une archive ZIP, ou téléchargez-les individuellement ci-dessous.</p>
+    </div>
+
+    <div class="instances-list">
+        {% if instances %}
+            <h3>📂 Liste des Instances ({{ instances|length }} fichier{% if instances|length > 1 %}s{% endif %})</h3>
+            <ul class="download-list">
+            {% for instance in instances %}
+                <li class="download-item">
+                    <div class="file-info">
+                        <span class="file-name">{{ instance.name }}</span>
+                        <span class="file-size">{{ instance.size }}</span>
+                    </div>
+                    <a href="/download/{{ instance.name }}" download class="btn-download">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        Télécharger
+                    </a>
+                </li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <div class="info-box">
+                <svg class="info-box-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+                <p>Aucune instance disponible pour le moment. Veuillez revenir plus tard.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
