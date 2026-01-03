@@ -343,4 +343,3 @@ if __name__ == "__main__":
     else:
         # Mode interactif
         generer_instance()
-
