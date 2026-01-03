@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import sys
+import re
 
 class InstanceVerificator:
     def __init__(self, filepath):
@@ -23,13 +24,16 @@ class InstanceVerificator:
         # 2. Vérifications minimales
         self.check_minimum_elements()
         
-        # 3. Vérifications de validité
+        # 3. Vérifications des IDs uniques
+        self.check_unique_ids()
+        
+        # 4. Vérifications de validité
         self.check_validity()
         
-        # 4. Vérifications de faisabilité
+        # 5. Vérifications de faisabilité
         self.check_feasibility()
         
-        # 5. Vérifications géométriques
+        # 6. Vérifications géométriques
         self.check_geometry()
         
         # Afficher le rapport
@@ -48,22 +52,35 @@ class InstanceVerificator:
         """Charge les données du fichier .dat"""
         try:
             with open(self.filepath, 'r') as f:
-                lines = [line.strip() for line in f.readlines() if line.strip() and not line.strip().startswith('#')]
+                all_lines = [line.strip() for line in f.readlines()]
+            
+            # Extraire l'UUID si présent (première ligne commençant par #)
+            self.data['uuid'] = None
+            uuid_pattern = re.compile(r'^#\s*([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$', re.IGNORECASE)
+            for line in all_lines:
+                if line.startswith('#'):
+                    match = uuid_pattern.match(line)
+                    if match:
+                        self.data['uuid'] = match.group(1)
+                        break
+            
+            # Filtrer les commentaires et lignes vides
+            lines = [line for line in all_lines if line and not line.startswith('#')]
             
             if len(lines) < 6:
                 self.errors.append("❌ Fichier mal formaté : pas assez de sections")
                 return False
             
-            # Parsing
+            # Parsing - Ordre: nb_p, nb_d, nb_g, nb_s, nb_v
             params = np.array([int(x) for x in lines[0].split()])
-            nb_v, nb_d, nb_g, nb_s, nb_p = params
+            nb_p, nb_d, nb_g, nb_s, nb_v = params
             
             self.data['params'] = params
-            self.data['nb_v'] = nb_v
+            self.data['nb_p'] = nb_p
             self.data['nb_d'] = nb_d
             self.data['nb_g'] = nb_g
             self.data['nb_s'] = nb_s
-            self.data['nb_p'] = nb_p
+            self.data['nb_v'] = nb_v
             
             idx = 1
             
@@ -123,9 +140,29 @@ class InstanceVerificator:
             else:
                 print(f"✓ {name} : {self.data[key]}")
     
+    def check_unique_ids(self):
+        """Vérifie que les IDs sont uniques pour chaque type d'entité"""
+        print("\n🔢 Vérifications des IDs uniques :")
+        
+        entities = [
+            ('vehicles', 'Véhicules'),
+            ('depots', 'Dépôts'),
+            ('garages', 'Garages'),
+            ('stations', 'Stations')
+        ]
+        
+        for key, name in entities:
+            ids = [int(row[0]) for row in self.data[key]]
+            unique_ids = set(ids)
+            if len(ids) != len(unique_ids):
+                duplicates = [id for id in ids if ids.count(id) > 1]
+                self.errors.append(f"❌ IDs dupliqués pour {name} : {set(duplicates)}")
+            else:
+                print(f"✓ IDs {name} uniques")
+    
     def check_validity(self):
         """Vérifie la validité des données"""
-        print("\n Vérifications de validité :")
+        print("\n✅ Vérifications de validité :")
         
         # Garages utilisés existent
         vehicles = self.data['vehicles']
@@ -147,6 +184,14 @@ class InstanceVerificator:
             self.errors.append(f"❌ Matrice de transition mal dimensionnée : {self.data['transition_costs'].shape} au lieu de ({self.data['nb_p']}, {self.data['nb_p']})")
         else:
             print("✓ Matrice de transition cohérente")
+        
+        # Diagonale de la matrice de transition doit être 0
+        diag = np.diag(self.data['transition_costs'])
+        if not np.allclose(diag, 0):
+            non_zero_diag = [(i+1, diag[i]) for i in range(len(diag)) if diag[i] != 0]
+            self.errors.append(f"❌ Diagonale de la matrice de transition non nulle : {non_zero_diag}")
+        else:
+            print("✓ Diagonale de la matrice de transition = 0")
         
         # Demandes > 0 pour au moins une station
         stations = self.data['stations']
@@ -234,6 +279,13 @@ class InstanceVerificator:
         print("📊 RAPPORT DE VÉRIFICATION")
         print("="*50)
         
+        # Afficher l'UUID si présent
+        instance_uuid = self.data.get('uuid')
+        if instance_uuid:
+            print(f"\n🔑 UUID : {instance_uuid}")
+        else:
+            print("\n⚠️ UUID : Non trouvé (instance ancienne ou manuelle)")
+        
         if self.errors:
             print(f"\n❌ {len(self.errors)} erreur(s) :")
             for error in self.errors:
@@ -242,7 +294,7 @@ class InstanceVerificator:
             print("\n✅ Aucune erreur critique !")
         
         if self.warnings:
-            print(f"\n️ {len(self.warnings)} avertissement(s) :")
+            print(f"\n⚠️ {len(self.warnings)} avertissement(s) :")
             for warning in self.warnings:
                 print(f"  {warning}")
         
