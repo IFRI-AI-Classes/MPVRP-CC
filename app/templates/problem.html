@@ -1,83 +1,99 @@
 {% extends "base.html" %}
 
-{% block title %}Description du Problème - MPVRP-CC{% endblock %}
+{% block title %}Enoncé - MPVRP-CC{% endblock %}
 
 {% block content %}
 <div class="content-section">
-    <h1>Description du Problème</h1>
+    <h1>Enoncé du problème</h1>
 
     <p>
-        Le Problème de Tournées de Véhicules Multi-Produits avec Coût de changement de Produit
-        <strong>(Multi-Product Multi-Depot Vehicule Routing Problem with Changeover Cost - MPVRP-CC)</strong>
-        combine des décisions de routage de véhicules, de gestion multi-produits et de planification opérationnelle
-        dans un contexte de distribution de produits pétroliers.
+        Le <strong>problème de Tournées de Véhicules Multi-Produits avec Coût de Changement</strong>
+        (<em>Multi-Product Multi-Depot Vehicle Routing Problem with Changeover Cost - MPVRP-CC</em>)
+        est un défi d'optimisation logistique complexe. Il vise à organiser la distribution efficace de plusieurs types de produits
+        (par exemple, différents carburants) depuis un ensemble de dépôts vers un réseau de stations-service.
     </p>
 
     <img src="{{ url_for('static', path='/imgs/MPVRP-CO.jpg') }}" alt="Illustration MPVRP-CC" class="img-fluid">
 
-    <h2>Contexte et Définitions</h2>
-    <p>
-        Le problème prend en compte un ensemble de localisations comprenant plusieurs garages (bases des véhicules),
-        plusieurs dépôts (points d'approvisionnement en produits), et un ensemble de stations-service (clients).
-        Une flotte de camions-citernes est disponible, chaque camion ayant une capacité de chargement.
-        Un ensemble de produits doit être distribué.
-    </p>
-    <p>
-        Chaque camion se voit attribuer initialement un produit au moment de la génération des instances.
-        Chaque station-service exprime une demande pour chaque produit. Une matrice spécifie les distances entre
-        toutes les paires de sites (garages, dépôts, stations-service). Un coût de changement de produit est
-        appliqué lorsqu'un camion change de produit dans un dépôt.
-    </p>
+    <h2>Contexte et définitions</h2>
 
-    <h2>Structure des Tournées</h2>
-    <p>
-        Chaque camion effectue une tournée complète suivant le flux : <strong>Garage → Boucle (Dépôt - Stations) → Garage</strong>.
-    </p>
-    <p>
-        Une mini-tournée correspond à la séquence des stations visitées après un dépôt. Elle commence par un dépôt
-        et se termine soit à un garage ou dépôt.
-    </p>
-    <p>La tournée complète est composée d'une ou plusieurs mini-tournées :</p>
-    <ul>
-        <li>Chaque camion démarre de son garage attitré et doit retourner à la fin de sa tournée complète dans un garage.</li>
-        <li>Une séquence d'opérations comprenant : (1) chargement d'un seul produit dans un dépôt, (2) livraisons aux stations-service, (3) retour à un dépôt pour le rechargement suivant.</li>
-        <li>Un camion ne transporte qu'un seul type de produit par mini-tournée.</li>
-        <li>Chaque camion se voit attribuer un produit initial avant même le début des tournées.</li>
-        <li>Un camion peut changer de produit dans un dépôt (au début de sa tournée ou entre deux mini-tournées) moyennant un nettoyage qui engendre un coût. Ce changement peut s'effectuer dès la première visite à un dépôt ou lors de visites ultérieures.</li>
-        <li>À la fin de chaque mini-tournée, un camion retourne à un dépôt pour se recharger en produit (du même type ou d'un type différent après changement de produit).</li>
+    <h3>Notation mathématique</h3>
+    <p>Le problème est modélisé sur les ensembles suivants :</p>
+    <ul class="math-notation">
+        <li><i>K</i> : Ensemble des camions disponibles, <i>K</i> = {1, ..., <i>K</i>}</li>
+        <li><i>P</i> : Ensemble des produits à distribuer, <i>P</i> = {1, ..., <i>P</i>}</li>
+        <li><i>G</i> : Ensemble des garages (points de départ/arrivée des camions), <i>G</i> = {1, ..., <i>G</i>}</li>
+        <li><i>D</i> : Ensemble des dépôts (points de chargement), <i>D</i> = {1, ..., <i>D</i>}</li>
+        <li><i>S</i> : Ensemble des stations-service (clients), <i>S</i> = {1, ..., <i>S</i>}</li>
     </ul>
 
-    <h2>Objectifs et Contraintes</h2>
     <p>
-        Le MPVRP-CO doit déterminer les tournées et mini-tournées pour tous les camions de manière à satisfaire des contraintes telles que :
+        Le réseau logistique connecte ces différents sites. Une matrice de distances définit l'éloignement entre chaque paire de localisations.
+        Chaque station-service exprime une demande précise pour chaque type de produit.
+        Pour répondre à cette demande, une flotte hétérogène de camions-citernes est mobilisée. Chaque véhicule possède une capacité de chargement définie
+        et est rattaché à un garage spécifique.
+    </p>
+
+    <h2>Fonctionnement opérationnel</h2>
+    <p>
+        L'activité des camions suit une structure rigoureuse : <strong>Garage → [Dépôt → Clients]... → Garage</strong>.
+    </p>
+
+    <h3>Structure des tournées</h3>
+    <p>
+        Une <strong>tournée complète</strong> commence et se termine obligatoirement au garage d'attache du véhicule.
+        Elle est constituée d'une succession de <strong>mini-tournées</strong>.
+    </p>
+    <p>
+        Une mini-tournée correspond à un cycle de livraison :
     </p>
     <ul>
-        <li>Chaque camion respecte sa capacité maximale lors de chaque mini-tournée.</li>
-        <li>Les demandes de toutes les stations pour tous les produits doivent être satisfaites intégralement à la fin de toutes les tournées.</li>
-        <li>La demande d'une station peut ne pas être entièrement satisfaite par un seul camion lors de son passage pour un produit donné.</li>
-        <li>Un camion ne passe pas plus d'une fois par une même station pour le même produit.</li>
+        <li><strong>Chargement :</strong> Le camion se rend dans un dépôt pour charger un (et un seul) type de produit.</li>
+        <li><strong>Livraison :</strong> Il dessert ensuite une ou plusieurs stations-service pour livrer ce produit.</li>
+        <li><strong>Retour :</strong> Une fois vide ou la tournée terminée, il retourne vers un dépôt pour recharger ou rentre à son garage.</li>
     </ul>
 
-    <p>On suppose que :</p>
+    <h3>Gestion multi-produits</h3>
+    <p>
+        La particularité de ce problème réside dans la gestion des produits :
+    </p>
     <ul>
-        <li>Les dépôts disposent de stocks suffisants pour tous les produits.</li>
-        <li>Tous les sites sont accessibles à tout moment.</li>
+        <li>Un camion ne peut transporter qu'un seul type de produit à la fois (compartiment unique ou dédié).</li>
+        <li>Chaque camion est initialement configuré pour un produit donné.</li>
+        <li><strong>Coût de changement (Changeover Cost) :</strong> Il est possible de changer de produit lors d'un passage au dépôt.
+            Cependant, cette opération nécessite un nettoyage de la citerne qui engendre un coût spécifique.
+            L'optimisation doit donc arbitrer entre faire des détours pour garder le même produit ou payer ce coût pour changer de produit sur place.</li>
     </ul>
 
-    <h3>Fonction Objectif</h3>
-    <p>Une solution optimale minimise le coût total comprenant :</p>
+    <h2>Objectifs et contraintes</h2>
+
+    <p>
+        L'objectif du MPVRP-CC est de déterminer les itinéraires de l'ensemble de la flotte afin de <strong>minimiser le coût total</strong>, composé de :
+    </p>
     <ul>
-        <li>Le coût de transport, proportionnel à la distance totale parcourue par l'ensemble de la flotte sur toutes les tournées.</li>
-        <li>Le coût engendré par tous les changements de produit effectués par les camions dans les dépôts.</li>
+        <li>Du coût de transport (proportionnel à la distance totale parcourue).</li>
+        <li>Du coût total de changement de produit (nettoyage des citernes).</li>
     </ul>
 
-    <h3>Réalisabilité</h3>
-    <p>Une solution réalisable doit garantir que:</p>
+    <p>
+        Une solution valide doit respecter impérativement les contraintes suivantes :
+    </p>
     <ul>
-        <li>Chaque tournée de camion commence et se termine au garage du camion.</li>
-        <li>Chaque mini-tournée respecte la contrainte de capacité du véhicule.</li>
-        <li>Chaque mini-tournée ne transporte qu'un seul type de produit.</li>
-        <li>Toutes les demandes des stations pour tous les produits sont satisfaites intégralement.</li>
+        <li><strong>Satisfaction de la demande :</strong> Toutes les demandes des stations, pour tous les produits, doivent être intégralement livrées.</li>
+        <li><strong>Capacité :</strong> La quantité chargée ne doit jamais excéder la capacité maximale du camion.</li>
+        <li><strong>Flux :</strong> Chaque camion doit finir sa journée à son garage d'origine.</li>
+        <li><strong>Unicité :</strong> Un camion ne dessert pas la même station plusieurs fois pour le même produit au cours d'une même mini-tournée.</li>
     </ul>
+
+    <div class="info-box">
+        <div class="info-box-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        </div>
+        <p>
+            <strong>Hypothèses :</strong> On suppose que l'ensemble des dépôts dispose d'un stock capable de satisfaire toutes les demandes et que tous les sites sont accessibles sans contrainte horaire.
+        </p>
+    </div>
 </div>
 {% endblock %}

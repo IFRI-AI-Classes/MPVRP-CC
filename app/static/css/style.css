@@ -929,6 +929,37 @@ footer p {
     }
 }
 
+/* Mathematical Notation Styles */
+.math-notation {
+    list-style: none;
+    padding: 0;
+    margin: 20px 0;
+}
+
+.math-notation li {
+    background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-color) 100%);
+    border-left: 3px solid var(--accent-color);
+    padding: 14px 20px;
+    margin-bottom: 10px;
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    transition: var(--transition);
+}
+
+.math-notation li:hover {
+    box-shadow: var(--shadow-sm);
+    transform: translateX(4px);
+}
+
+.math-notation li i {
+    font-style: italic;
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 1.1em;
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
 /* Print Styles */
 @media print {
     header, footer, .menu-toggle, .btn-download, .btn-download-all {
