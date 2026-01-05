@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from app.routes import web
+from backup.app.routes import web
 
 app = FastAPI()
 

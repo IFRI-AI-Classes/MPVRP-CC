@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Specifications - MPVRP-CC</title>
+    <link rel="stylesheet" href="static/css/style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="../index.html" class="nav-brand">MPVRP-CC</a>
+
+            <div class="menu-toggle" id="mobile-menu">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+
+            <ul class="nav-links">
+                <li><a href="../index.html">Accueil</a></li>
+                <li class="dropdown">
+                    <a href="#" class="dropbtn">Documentation ▾</a>
+                    <div class="dropdown-content">
+                        <a href="problem.html">Problème</a>
+                        <a href="specification.html">Spécifications</a>
+                    </div>
+                </li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <div class="content-section">
+          <h1>Spécifications techniques</h1>
+
+          <div class="info-box">
+              <svg class="info-box-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <p>
+                  Cette page détaille les formats de fichiers utilisés pour les instances et les solutions du problème.
+                  Ces spécifications sont essentielles pour garantir l'interopérabilité entre le générateur d'instances, les solveurs et les outils de vérification.
+              </p>
+          </div>
+
+          <!-- Section Format des Instances -->
+          <h2>📁 Format des instances</h2>
+          <p>
+              Les instances sont stockées dans des fichiers texte portant l'extension <code>.dat</code>.
+          </p>
+
+          <div class="spec-card">
+              <h4>Convention de nommage</h4>
+              <p>Le nom du fichier encode les caractéristiques principales de l'instance :</p>
+              <p><code>MPVRP_A_sB_dC_pD.dat</code></p>
+          </div>
+
+          <div class="spec-grid">
+              <div class="spec-item">
+                  <h5><span class="spec-badge">A</span> Identifiant</h5>
+                  <p>Numéro unique de l'instance (ex: 01, 02)</p>
+              </div>
+              <div class="spec-item">
+                  <h5><span class="spec-badge">B</span> Stations</h5>
+                  <p>Nombre de clients à livrer</p>
+              </div>
+              <div class="spec-item">
+                  <h5><span class="spec-badge">C</span> Dépôts</h5>
+                  <p>Nombre de points de chargement</p>
+              </div>
+              <div class="spec-item">
+                  <h5><span class="spec-badge">D</span> Produits</h5>
+                  <p>Nombre de types de produits différents</p>
+              </div>
+          </div>
+
+        <h3>Structure interne du fichier</h3>
+        <p>Le fichier est structuré en blocs de données séquentiels. Les valeurs sont séparées par des espaces ou des tabulations.</p>
+
+        <div class="accordion">
+            <div class="accordion-item active">
+                <div class="accordion-header">
+                    <span>1. Paramètres globaux (Ligne 1)</span>
+                    <svg class="icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </div>
+                <div class="accordion-content">
+                    <p>La première ligne définit les dimensions du problème :</p>
+                    <pre>NbVehicules  NbDepots  NbGarages  NbStations  NbProduits</pre>
+                    <p><strong>Exemple :</strong> <code>5 2 1 20 3</code></p>
+                    <ul>
+                        <li>5 véhicules disponibles</li>
+                        <li>2 dépôts de chargement</li>
+                        <li>1 garage pour la flotte</li>
+                        <li>20 stations-service à desservir</li>
+                        <li>3 types de produits à distribuer</li>
+                    </ul>
+                </div>
+            </div>
+
+        <div class="accordion-item">
+            <div class="accordion-header">
+                <span>2. Matrice de coûts de transition</span>
+                <svg class="icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </div>
+            <div class="accordion-content">
+                <p>
+                    Cette matrice carrée (taille <em>NbProduits × NbProduits</em>) définit le coût de nettoyage nécessaire pour passer d'un produit à un autre dans la citerne du camion.
+                </p>
+                <pre>Cost_P1→P1  Cost_P1→P2  ...
+Cost_P2→P1  Cost_P2→P2  ...
+...</pre>
+                <p>
+                    La valeur à la ligne <em>i</em> et colonne <em>j</em> est le coût pour passer du produit <em>i</em> au produit <em>j</em>.
+                    La diagonale est généralement nulle (pas de coût pour garder le même produit).
+                </p>
+            </div>
+        </div>
+
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <span>3. Flotte de véhicules</span>
+                    <svg class="icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </div>
+                <div class="accordion-content">
+                    <p>Chaque ligne décrit un véhicule disponible :</p>
+                    <pre>ID  Capacité  GarageOrigine  ProduitInitial</pre>
+                    <table>
+                        <tr><th>Champ</th><th>Description</th></tr>
+                        <tr><td><code>ID</code></td><td>Identifiant unique du véhicule</td></tr>
+                        <tr><td><code>Capacité</code></td><td>Volume maximum transportable</td></tr>
+                        <tr><td><code>GarageOrigine</code></td><td>ID du garage de rattachement</td></tr>
+                        <tr><td><code>ProduitInitial</code></td><td>Configuration initiale de la citerne</td></tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <span>4. Dépôts (points de chargement)</span>
+                    <svg class="icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </div>
+                <div class="accordion-content">
+                    <p>Chaque ligne définit un dépôt :</p>
+                    <pre>ID  X  Y  Stock_P1  Stock_P2  ...  Stock_Pp</pre>
+                    <ul>
+                        <li><code>X, Y</code> : Coordonnées géographiques</li>
+                        <li><code>Stock_Pi</code> : Quantité disponible pour le produit <em>i</em></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <span>5. Garages (bases)</span>
+                    <svg class="icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </div>
+                <div class="accordion-content">
+                    <p>Chaque ligne définit un garage :</p>
+                    <pre>ID  X  Y</pre>
+                    <p>Les garages servent uniquement de point de départ et d'arrivée pour les tournées.</p>
+                </div>
+            </div>
+
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <span>6. Stations-service (clients)</span>
+                    <svg class="icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </div>
+                <div class="accordion-content">
+                    <p>Chaque ligne définit une station et ses besoins :</p>
+                    <pre>ID  X  Y  Demande_P1  Demande_P2  ...  Demande_Pp</pre>
+                    <ul>
+                        <li><code>Demande_Pi</code> : Quantité requise pour le produit <em>i</em></li>
+                        <li>Une demande de 0 signifie que la station n'a pas besoin de ce produit.</li>
+                    </ul>
+                </div>
+            </div>
+    </div>
+    <h3>Exemple d'instance</h3>
+    <pre>2	1	2	3	2
+0.0	18.1
+61.5	0.0
+1	20000	1	1
+2	20000	1	2
+1	81.6	63.6	57914	82626
+1	98.1	49.6
+2	56.8	26
+1	23.5	42.2	0	4278
+2	3.5	38.3	1344	2350
+3	56.7	31.3	0	2319
+</pre>
+
+    <!-- Section Format des Solutions -->
+          <h2>📋 Format des solutions</h2>
+          <p>
+              Pour être validée, une solution doit être fournie dans un fichier texte respectant strictement la structure ci-dessous.
+              Le nom du fichier doit correspondre à l'instance résolue (ex: <code>Sol_MPVRP_...</code>) toujours avec l'extension <code>.dat</code>.
+          </p>
+
+          <h3>Structure du fichier</h3>
+          <p>Le fichier décrit les tournées véhicule par véhicule, puis termine par un résumé des performances.</p>
+
+          <div class="accordion">
+              <div class="accordion-item active">
+                  <div class="accordion-header">
+                      <span>Description des tournées</span>
+                      <svg class="icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                      </svg>
+                  </div>
+                  <div class="accordion-content">
+                      <p>Pour chaque véhicule utilisé, la solution contient un bloc de <strong>2 lignes</strong> :</p>
+
+                      <h5>Ligne 1 : Séquence de visite</h5>
+                      <pre>Garage - Dépôt - Station(Qté) - ... - Garage</pre>
+                      <p>Décrit le chemin parcouru. Les quantités livrées aux stations sont indiquées entre parenthèses.</p>
+
+                      <h5>Ligne 2 : Séquence des produits et coûts</h5>
+                      <pre>Prod(Coût) - Prod(Coût) - ...</pre>
+                      <p>Indique quel produit est transporté à chaque étape et le coût de changement associé (si applicable).</p>
+
+                      <div class="info-box" style="margin-top: 15px; padding: 10px;">
+                          <p style="font-size: 0.9em; margin: 0;">
+                              <strong>Note :</strong> Les deux lignes doivent être parfaitement alignées en termes de nombre d'étapes.
+                          </p>
+                      </div>
+                  </div>
+              </div>
+
+              <div class="accordion-item">
+                  <div class="accordion-header">
+                      <span>Indicateurs de performance (fin de fichier)</span>
+                      <svg class="icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                      </svg>
+                  </div>
+                  <div class="accordion-content">
+                      <p>Les 6 dernières lignes du fichier résument la qualité de la solution :</p>
+                      <ol>
+                          <li>Nombre total de changements de produit</li>
+                          <li>Nombre de véhicules utilisés</li>
+                          <li>Coût total de changement de produit</li>
+                          <li>Coût total de transport (distance)</li>
+                          <li>Information sur le système (CPU)</li>
+                          <li>Temps de calcul (secondes)</li>
+                      </ol>
+                  </div>
+              </div>
+          </div>
+
+    <h3>Exemple de solution valide</h3>
+    <pre>1 - 3 - 8 ( 51 ) - 9 ( 63 ) - 1
+3(0.0) - 3(0.0) - 3(0.0) - 3(0.0) - 3(0.0)
+
+2 - 4 - 13 ( 18 ) - 2
+2(0.0) - 2(0.0) - 2(0.0) - 2(0.0)
+
+2
+2
+47.70
+1385.07
+Intel Core i7
+0.245</pre>
+
+      </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Laboratoire de Recherche en Sciences Informatiques et Applications (LRSIA). Tous droits réservés.</p>
+    </footer>
+
+    <script>
+        // Mobile menu toggle
+        document.getElementById('mobile-menu').addEventListener('click', function() {
+            document.querySelector('.nav-links').classList.toggle('active');
+        });
+
+        // Handle dropdown on mobile
+        const dropdowns = document.querySelectorAll('.dropdown');
+        dropdowns.forEach(dropdown => {
+            const dropbtn = dropdown.querySelector('.dropbtn');
+            dropbtn.addEventListener('click', function(e) {
+                if (window.innerWidth <= 768) {
+                    e.preventDefault();
+                    dropdown.classList.toggle('active');
+                }
+            });
+        });
+
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('nav')) {
+                document.querySelector('.nav-links').classList.remove('active');
+                dropdowns.forEach(dropdown => dropdown.classList.remove('active'));
+            }
+        });
+
+        // Accordion functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const accordionHeaders = document.querySelectorAll('.accordion-header');
+
+            accordionHeaders.forEach(header => {
+                header.addEventListener('click', function() {
+                    const accordionItem = this.parentElement;
+                    const isActive = accordionItem.classList.contains('active');
+
+                    // Close all accordion items
+                    document.querySelectorAll('.accordion-item').forEach(item => {
+                        item.classList.remove('active');
+                    });
+
+                    // If this item wasn't active, open it
+                    if (!isActive) {
+                        accordionItem.classList.add('active');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
