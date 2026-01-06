@@ -1,0 +1,513 @@
+\documentclass[12pt, a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{ragged2e}
+\usepackage{tcolorbox}  % Pour les encadrés
+\usepackage{setspace}   % Pour l'espacement
+
+% Environnement pour les justifications
+\newtcolorbox{justmark}{%
+    colback=gray!5,
+    colframe=gray!40,
+    boxrule=0.5pt,
+    left=8pt,
+    right=8pt,
+    top=4pt,
+    bottom=4pt,
+    arc=2pt,
+    fontupper=\small\itshape
+}
+
+\geometry{
+ a4paper,
+ total={170mm,257mm},
+ left=20mm,
+ top=20mm,
+}
+
+% Amélioration des tableaux
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+
+\title{Modélisation mathématique du problème de tournée de véhicules Multi-Produits Multi-Dépôts avec Coût de Changement de produit (CRP)}
+\author{}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Ce document présente une modélisation mathématique corrigée en \textbf{Programmation Linéaire en Nombres Entiers Mixtes (PLNEM)} pour le problème de tournée de véhicules Multi-Produits Multi-Dépôts avec Coût de Changement de produit (CRP).
+\end{abstract}
+
+\section{Définition des ensembles}
+
+Le problème est défini sur un graphe $G = (N, A)$, où $N$ est l'ensemble des nœuds et $A$ l'ensemble des arcs.
+
+\begin{longtable}{L{2.5cm}L{12cm}}
+\toprule
+\textbf{Symbole} & \textbf{Description} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Symbole} & \textbf{Description} \\
+\midrule
+\endhead
+$K$ & Ensemble des véhicules (camions-citernes). \\
+\addlinespace
+$P$ & Ensemble des produits à distribuer. \\
+\addlinespace
+$G$ & Ensemble des garages (points de départ et d'arrivée des tournées complètes). \\
+\addlinespace
+$D$ & Ensemble des dépôts (points d'approvisionnement). \\
+\addlinespace
+$S$ & Ensemble des stations-service (clients). \\
+\addlinespace
+$V = D \cup S$ & Ensemble des nœuds de service (dépôts et stations). \\
+\addlinespace
+$N = G \cup D \cup S$ & Ensemble de tous les nœuds. \\
+\addlinespace
+$A = \{(i, j) \mid i, j \in V, i \neq j\}$ & Ensemble des arcs entre les nœuds de service. \\
+\addlinespace
+$T$ & Ensemble des positions séquentielles pour les mini-tournées (e.g., $T = \{1, 2, \dots, |P| * |S|\}$ pour un upper bound suffisant). \\
+\bottomrule
+\end{longtable}
+
+\noindent\textbf{Note :} $T$ est introduit pour ordonner les mini-tournées. Sa taille doit être un upper bound sur le nombre maximal de mini-tournées par véhicule (par exemple, basé sur le nombre de produits ou de demandes).
+
+\section{Données connues}
+
+\begin{longtable}{L{2.5cm}L{12cm}}
+\toprule
+\textbf{Symbole} & \textbf{Description} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Symbole} & \textbf{Description} \\
+\midrule
+\endhead
+$c_{ij}$ & Coût (distance) de l'arc $(i, j) \in N \times N$. \\
+\addlinespace
+$C_k$ & Capacité maximale du véhicule $k \in K$. \\
+\addlinespace
+$d_{sp}$ & Demande de la station $s \in S$ pour le produit $p \in P$. \\
+\addlinespace
+$Change_{p'p}$ & Coût de changement de produit de $p'$ à $p$ au dépôt. ($Change_{pp} = 0$). \\
+\addlinespace
+$P_{k}^{\text{initial}}$ & Produit initialement attribué au véhicule $k \in K$ (un seul produit). \\
+\addlinespace
+$S_{dp}$ & Stock du produit $p$ disponible au dépôt $d \in D$. \\
+\addlinespace
+$g_k$ & Garage attitré du véhicule $k \in K$. \\
+\addlinespace
+$M$ & Un grand nombre (Big M). \\
+\addlinespace
+$\epsilon$ & Quantité minimale à charger (ex: 1 litre). \\
+\bottomrule
+\end{longtable}
+
+\section{Définition des variables de décision}
+
+\begin{longtable}{L{2cm}L{2.5cm}L{10cm}}
+\toprule
+\textbf{Symbole} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Symbole} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\endhead
+$x_{ijkpt}$ & Binaire $\{0, 1\}$ & 1 si le véhicule $k$ va de $i \in V$ à $j \in V$ avec le produit $p$ à la position $t$, 0 sinon. \\
+\addlinespace
+$Load_{dktp}$ & Binaire $\{0, 1\}$ & 1 si le véhicule $k$ charge le produit $p$ au dépôt $d \in D$ à la position $t \in T$ pour une mini-tournée, 0 sinon. \\
+\addlinespace
+$Deliv_{spkt}$ & Continu $\ge 0$ & Quantité du produit $p$ livrée à la station $s$ par le véhicule $k$ à la position $t$. \\
+\addlinespace
+$QLoad_{dktp}$ & Continu $\ge 0$ & Quantité du produit $p$ chargée par le véhicule $k$ au dépôt $d$ à la position $t$. \\
+\addlinespace
+$q_{ikpt}$ & Continu $\ge 0$ & Quantité de produit $p$ restant dans le véhicule $k$ au nœud $i$ à la position $t$. \\
+\addlinespace
+$Switch_{kt p' p}$ & Binaire $\{0, 1\}$ & 1 si le véhicule $k$ effectue un changement de produit de $p'$ à $p$ à la position $t \in T$ ($p' \neq p$). \\
+\addlinespace
+$Start_{gdk}$ & Binaire $\{0, 1\}$ & 1 si le véhicule $k$ commence sa tournée au garage $g_k$ et se dirige vers le dépôt $d \in D$, 0 sinon. \\
+\addlinespace
+$Fin_{sgkpt}$ & Binaire $\{0, 1\}$ & 1 si le véhicule $k$ termine sa tournée complète au garage $g_k$ depuis $s$ à la fin de la mini-tournée $t$. \\
+\addlinespace
+$Used_{kt}$ & Binaire $\{0, 1\}$ & 1 si la position $t \in T$ est utilisée pour une mini-tournée du véhicule $k$. \\
+\addlinespace
+$Prod_{ktp}$ & Binaire $\{0, 1\}$ & 1 si le produit $p$ est utilisé à la position $t$ pour le véhicule $k$. \\
+\addlinespace
+$EndDepot_{dkpt}$ & Binaire $\{0, 1\}$ & 1 si le segment (position) $t$ du véhicule $k$ avec le produit $p$ se termine au dépôt $d \in D$ (fin de segment sur dépôt). \\
+\bottomrule
+\end{longtable}
+
+\section{Fonction objectif}
+
+L'objectif est de minimiser le coût total, qui est la somme du coût de transport (distance parcourue) et du coût de changement de produit.
+
+\begin{equation}
+\label{eq:objectif}
+\begin{split}
+\min \quad & \sum_{k \in K} \sum_{t \in T} \sum_{p \in P} \sum_{i \in V} \sum_{j \in V} c_{ij} x_{ijkpt} + \sum_{k \in K} \sum_{t \in T} \sum_{p' \in P} \sum_{\substack{p \in P \\ p \neq p'}} Change_{p'p} \cdot Switch_{kt p' p} \\
+& + \sum_{k \in K} \sum_{d \in D} c_{g_k d} \cdot Start_{g_k d k} + \sum_{k \in K} \sum_{t \in T} \sum_{p \in P} \sum_{s \in S} c_{s g_k} \cdot Fin_{s g_k k p t}
+\end{split}
+\end{equation}
+
+\section{Contraintes}
+
+\subsection{Satisfaction de la demande}
+
+\begin{equation}
+\label{eq:demande}
+\sum_{k \in K} \sum_{t \in T} Deliv_{spkt} = d_{sp} \quad \forall s \in S, \forall p \in P \tag{C1}
+\end{equation}
+
+\begin{justmark}
+\textbf{Justification :} La demande totale d'une station pour un produit est satisfaite par la somme des livraisons de ce produit effectuées sur toutes les mini-tournées $t$ de tous les véhicules.
+\end{justmark}
+
+\vspace{1em}
+
+\subsection{Contraintes de flot et de routage}
+\textbf{Début de tournée complète :}
+\begin{equation}
+\label{eq:debut_tournee}
+\sum_{d \in D} Start_{g_k d k} = Used_{k1} \quad \forall k \in K \tag{C2}
+\end{equation}
+
+\begin{justmark}
+\textbf{Justification :} Chaque véhicule doit obligatoirement démarrer sa tournée depuis son garage attitré $g_k$ vers un dépôt d'approvisionnement s'il est utilisé ($Used_{k1}$ = 1). L'égalité à 1 garantit qu'un et un seul dépôt est choisi comme première destination.
+\end{justmark}
+
+\vspace{1em}
+
+\textbf{Fin de tournée complète :} Retour au même garage $g_k$ depuis une station.
+\begin{equation}
+\label{eq:fin_tournee}
+\sum_{s \in S} \sum_{p \in P} \sum_{t \in T} Fin_{s g_k k p t} = Used_{k1} \quad \forall k \in K \tag{C3}
+\end{equation}
+
+\begin{justmark}
+\textbf{Justification :} Chaque véhicule utilisé doit terminer sa tournée complète en revenant à son garage $g_k$ depuis une station $s \in S$. Le véhicule ne peut pas terminer directement depuis un dépôt, ce qui force la livraison effective avant le retour au garage.
+\end{justmark}
+
+\vspace{1em}
+
+\textbf{Conservation du flot aux stations (par position $t$) :}
+\begin{equation}
+\sum_{i \in V} x_{iskpt} = \sum_{j \in V} x_{sjkpt} + Fin_{s g_k k p t} \quad \forall s \in S, \forall k \in K, \forall p \in P, \forall t \in T \tag{C4}
+\end{equation}
+
+\begin{justmark}
+\textbf{Justification :} Le flot doit s'équilibrer à chaque station pour chaque mini-tournée $t$. Le véhicule peut soit repartir vers une autre station/dépôt, soit rentrer au garage ($Fin$). 
+\end{justmark}
+
+\vspace{1em}
+
+\textbf{Contraintes aux dépôts (pas de dépôt de passage) :}
+\begin{align}
+\sum_{j \in V} x_{djkpt} &= Load_{dktp}
+&& \forall d \in D, \forall k \in K, \forall p \in P, \forall t \in T \tag{C5a}\\
+\sum_{i \in V} x_{idkpt} &= EndDepot_{dkpt}
+&& \forall d \in D, \forall k \in K, \forall p \in P, \forall t \in T \tag{C5b}
+\end{align}
+
+\begin{justmark}
+	extbf{Justification :} À la position $t$ (un \emph{segment}), le véhicule ne peut pas utiliser un dépôt comme simple nœud de transit.
+La contrainte (C5a) impose qu'on \emph{part} d'un dépôt $d$ si et seulement si on a chargé ce dépôt pour ce segment ($Load_{dktp}=1$).
+La contrainte (C5b) impose qu'on \emph{arrive} sur un dépôt uniquement pour \emph{terminer} le segment ($EndDepot_{dkpt}=1$).
+\end{justmark}
+
+\vspace{1em}
+
+\textbf{Fin unique d'un segment :}
+\begin{equation}
+\sum_{d \in D} EndDepot_{dkpt} + \sum_{s \in S} Fin_{s g_k k p t} = Prod_{ktp}
+\quad \forall k \in K, \forall p \in P, \forall t \in T \tag{C6}
+\end{equation}
+
+\begin{justmark}
+	extbf{Justification :} Si le produit $p$ est actif sur le segment $t$ ($Prod_{ktp}=1$), alors ce segment doit se terminer exactement une fois : soit en revenant à un dépôt (variable $EndDepot$), soit en revenant au garage depuis une station (variable $Fin$).
+\end{justmark}
+
+\vspace{1em}
+
+\textbf{Continuité des segments (enchaînement via dépôt) :}
+\begin{align}
+Used_{k(t+1)} &= \sum_{d \in D} \sum_{p \in P} EndDepot_{dkpt} && \forall k \in K, \forall t \in T \setminus \{\max T\} \tag{C7a}\\
+\sum_{p \in P} Load_{d,k,(t+1),p} &= \sum_{p \in P} EndDepot_{dkpt} && \forall d \in D, \forall k \in K, \forall t \in T \setminus \{\max T\} \tag{C7b}
+\end{align}
+
+\begin{justmark}
+	extbf{Justification :} Un nouveau segment $t+1$ ne peut démarrer que si le segment $t$ s'est terminé sur un dépôt. Le second lien impose que le dépôt de chargement du segment $t+1$ est exactement le dépôt où le segment $t$ s'est terminé (rechargement au même dépôt).
+\end{justmark}
+
+\vspace{1em}
+
+\textbf{Unicité de visite :} 
+\begin{equation}
+\label{eq:unicite_visite}
+\sum_{t \in T} \sum_{i \in V} x_{iskpt} \le 1 \quad \forall s \in S, \forall k \in K, \forall p \in P \tag{C7}
+\end{equation}
+
+\begin{justmark}
+\textbf{Justification :} Un véhicule ne peut visiter une même station qu'une seule fois pour un produit donné, sur toutes les positions.
+\end{justmark}
+
+\vspace{1em}
+
+\textbf{Lien entre chargement et mini-Tournée :}
+\begin{equation}
+\label{eq:flot_depot_depart}
+\sum_{t \in T} \sum_{j \in V} x_{djkpt} = \sum_{t \in T} Load_{dktp} \quad \forall d \in D, \forall k \in K, \forall p \in P \tag{C8}
+\end{equation}
+
+\begin{justmark}
+\textbf{Justification :} Le nombre de départs d'un dépôt $d$ avec un produit $p$ doit correspondre au nombre de chargements effectués à ce dépôt. Cela établit la cohérence entre les décisions de routage (variable $x$) et les décisions de chargement (variable $Load$).
+\end{justmark}
+
+\vspace{1em}
+
+\textbf{Lien entre livraison et flot (inflow) :}
+\begin{equation}
+\label{eq:livraison_flot}
+Deliv_{spkt} \le M \sum_{i \in V} x_{iskpt} \quad \forall s \in S, \forall k \in K, \forall p \in P, \forall t \in T \tag{C9}
+\end{equation}
+
+\begin{justmark}
+\textbf{Justification :} Une livraison ne peut avoir lieu que si le véhicule arrive effectivement à la station avec le produit concerné (inflow). Le terme $M$ (Big-M) permet de désactiver la contrainte lorsque la visite a lieu, autorisant ainsi une livraison jusqu'à concurrence de la demande.
+\end{justmark}
+
+\vspace{1.5em}
+
+	extbf{Visiter une station implique livrer :}
+\begin{equation}
+\label{eq:visit_implies_deliv}
+Deliv_{spkt} \ge \epsilon^{\text{deliv}} \left(\sum_{i \in V} x_{iskpt} + Fin_{s g_k k p t}\right)
+\quad \forall s \in S, \forall k \in K, \forall p \in P, \forall t \in T \tag{C9bis}
+\end{equation}
+
+\begin{justmark}
+	extbf{Justification :} On ne peut pas modéliser strictement "$>0$" en PLNEM. On impose donc un plancher $\epsilon^{\text{deliv}} > 0$ dès qu'une station est visitée (inflow) ou qu'on termine la tournée depuis cette station ($Fin$).
+Dans l'implémentation, on prend $\epsilon^{\text{deliv}} = \min\{1, \min(d_{sp} : d_{sp} > 0)\}$ pour rester faisable si certaines demandes sont fractionnaires.
+\end{justmark}
+\subsection{Contraintes de stock et de quantité chargée}
+
+\textbf{Quantité chargée et livrée :}
+\begin{equation}
+\label{eq:charge_livree}
+\sum_{s \in S} Deliv_{spkt} = \sum_{d \in D} QLoad_{dktp} \quad \forall k \in K, \forall t \in T, \forall p \in P \tag{C10}
+\end{equation}
+
+\begin{justmark}
+\textbf{Justification :} Par conservation de la matière, tout ce qui est chargé à un dépôt pour une mini-tournée doit être livré lors de cette mini-tournée.
+\end{justmark}
+
+\vspace{1em}
+
+\textbf{Lien entre chargement et la variable binaire associée:}
+\begin{equation}
+\label{eq:lien_charge_binaire}
+QLoad_{dktp} \le M \cdot Load_{dktp} \quad \forall d \in D, \forall k \in K, \forall t \in T, \forall p \in P \tag{C11}
+\end{equation}
+
+\begin{justmark}
+\textbf{Justification :} La variable continue $QLoad$ (quantité chargée) est conditionnée par la variable binaire $Load$ (décision de chargement). Lorsque $Load_{dktp} = 0$, la quantité $QLoad_{dktp}$ est forcée à zéro ; sinon, elle est bornée par le Big-M.
+\end{justmark}
+
+\vspace{1em}
+
+\textbf{Contrainte de quantité minimale :}
+\begin{equation}
+\label{eq:quantite_minimale}
+QLoad_{dktp} \ge \epsilon^{\text{load}} \cdot Load_{dktp} \quad \forall d \in D, \forall k \in K, \forall t \in T, \forall p \in P \tag{C11bis}
+\end{equation}
+
+\begin{justmark}
+	extbf{Justification :} Cette contrainte évite les segments "vides" ($Load=1$ mais quantité chargée nulle). Dans l'implémentation, on fixe $\epsilon^{\text{load}} = 1$.
+\end{justmark}
+
+\vspace{1em}
+
+\textbf{Contrainte de stock du dépôt :}
+\begin{equation}
+\label{eq:stock_depot}
+\sum_{k \in K} \sum_{t \in T} QLoad_{dktp} \le S_{dp} \quad \forall d \in D, \forall p \in P \tag{C12}
+\end{equation}
+
+\begin{justmark}
+\textbf{Justification :} Les dépôts disposent d'un stock limité $S_{dp}$ pour chaque produit. La somme de tous les prélèvements effectués par l'ensemble des véhicules ne peut excéder cette capacité de stockage.
+\end{justmark}
+
+\vspace{1.5em}
+
+\subsection{Contraintes de capacité et d'élimination des sous-tournées (SEC)}
+
+\textbf{Capacité du véhicule :} Par chargement (mini-tournée).
+\begin{equation}
+\label{eq:capacite_vehicule}
+\sum_{d \in D}\sum_{p \in P} QLoad_{dktp} \le C_k \cdot Used_{kt} \quad \forall k \in K, \forall t \in T \tag{C13}
+\end{equation}
+
+\begin{justmark}
+\textbf{Justification :} Chaque véhicule $k$ possède une capacité physique maximale $C_k$ qui ne peut être dépassée lors d'un chargement. La variable $Used_{kt}$ active ou désactive cette borne selon que la position $t$ est utilisée ou non.
+\end{justmark}
+
+\vspace{1.5em}
+
+\textbf{Élimination des sous-tournées et gestion de la charge (MTZ) :}
+
+\vspace{0.5em}
+\noindent Au lieu des coupes dynamiques, nous utilisons la variable $q_{ikpt}$ pour garantir l'absence de cycles et la cohérence des quantités. 
+
+\textbf{Initialisation de la charge au dépôt :}
+\begin{equation}
+q_{dkpt} = QLoad_{dktp} \quad \forall d \in D, k \in K, t \in T, p \in P \tag{C14-MTZ1}
+\end{equation}
+
+\textbf{Décroissance de la charge et élimination des cycles :}
+\begin{equation}
+q_{jkpt} \le q_{ikpt} - Deliv_{jpkt} + M(1 - x_{ijkpt}) \quad \forall i \in V, j \in S, k \in K, t \in T, p \in P \tag{C14-MTZ2}
+\end{equation}
+
+\begin{justmark}
+\textbf{Justification :} Si le véhicule va de $i$ vers $j$ ($x=1$), la charge en arrivant à $j$ doit être égale à la charge en $i$ moins ce qui a été livré en $j$. Comme $Deliv > 0$ pour au moins une station du cycle, cela interdit mathématiquement de boucler sur un ensemble de stations sans repasser par un dépôt. 
+\end{justmark}
+
+\textbf{Respect de la capacité :}
+\begin{equation}
+q_{ikpt} \le C_k \cdot \sum_{j \in V} x_{ijkpt} \quad \forall i \in V, k \in K, t \in T, p \in P \tag{C14-MTZ3}
+\end{equation}
+
+\vspace{1.5em}
+
+\subsection{Contraintes de changement de produit et de coût}
+
+\textbf{Un seul produit chargé par tournée :}
+\begin{equation}
+\label{eq:un_seul_produit_charge}
+\sum_{p \in P} \sum_{d \in D} Load_{dktp} = Used_{kt} \quad \forall k \in K, \forall t \in T \tag{C15}
+\end{equation}
+
+\begin{justmark}
+\textbf{Justification :} Si la position $t$ est active ($Used_{kt}=1$), exactement un produit doit être chargé à un dépôt pour cette mini-tournée. Cela modélise le fait qu'une citerne ne transporte qu'un seul type de produit par voyage.
+\end{justmark}
+
+\vspace{1em}
+
+\textbf{Identification du produit par tournée :}
+\begin{equation}
+Prod_{ktp} = \sum_{d \in D} Load_{dktp} \quad \forall k \in K, \forall t \in T, \forall p \in P \tag{C15bis}
+\end{equation}
+
+\begin{justmark}
+\textbf{Justification :} La variable auxiliaire $Prod_{ktp}$ agrège les chargements sur tous les dépôts pour identifier quel produit est utilisé à la position $t$. Elle facilite la détection des changements de produits entre positions consécutives.
+\end{justmark}
+
+\vspace{1em}
+
+\textbf{Ordonnancement des positions :} Positions séquentielles utilisées consécutivement.
+\begin{equation}
+Used_{kt} \ge Used_{k(t+1)} \quad \forall k \in K, \forall t \in T \setminus \{\max T\} \tag{C16}
+\end{equation}
+
+\begin{justmark}
+\textbf{Justification :} Pour éliminer les symétries et simplifier le modèle, les positions doivent être utilisées de manière consécutive (1, 2, 3, ...). Une position $t+1$ ne peut être active que si la position $t$ l'est également, évitant ainsi les "trous" dans la séquence.
+\end{justmark}
+
+\vspace{1em}
+
+\textbf{Détection du changement de produit (généralisée) :}
+
+\vspace{0.5em}
+\noindent Pour unifier le traitement du produit initial et des changements entre positions consécutives, on introduit une \textbf{position fictive $t=0$} représentant l'état initial du véhicule :
+
+\vspace{0.5em}
+\noindent\textbf{Définition de la position fictive :}
+$$Prod_{k,0,p} = \begin{cases} 1 & \text{si } p = P_k^{\text{initial}} \\ 0 & \text{sinon} \end{cases} \quad \forall k \in K, \forall p \in P$$
+
+\vspace{0.5em}
+\noindent Avec cette définition, la contrainte de détection devient :
+\begin{equation}
+\label{eq:changement_produit}
+Switch_{kt p' p} \ge Prod_{k(t-1) p'} + Prod_{kt p} - 1 \quad \forall k \in K, \forall t \in T, \forall p', p \in P, p' \neq p \tag{C17}
+\end{equation}
+
+\begin{justmark}
+\textbf{Justification :} Cette formulation généralisée traite uniformément tous les changements de produit :
+\begin{itemize}
+    \item Pour $t = 1$ : $Prod_{k,0,p'} = 1$ si $p' = P_k^{\text{initial}}$, détectant le changement par rapport au produit initial.
+    \item Pour $t \ge 2$ : comportement standard entre positions consécutives.
+\end{itemize}
+\end{justmark}
+
+\vspace{1.5em}
+
+\subsection{Domaine des variables}
+
+\begin{align*}
+x_{ijkpt} &\in \{0, 1\} && \forall i, j \in V, k \in K, p \in P, t \in T \\
+Load_{dktp} &\in \{0, 1\} && \forall d \in D, k \in K, t \in T, p \in P \\
+EndDepot_{dkpt} &\in \{0, 1\} && \forall d \in D, k \in K, p \in P, t \in T \\
+Switch_{kt p' p} &\in \{0, 1\} && \forall k \in K, t \in T, p', p \in P, p' \neq p \\
+Start_{gdk} &\in \{0, 1\} && \forall d \in D, k \in K \\
+Fin_{sgkpt} &\in \{0, 1\} && \forall s \in S, k \in K, p \in P, t \in T \\
+Used_{kt} &\in \{0, 1\} && \forall k \in K, t \in T \\
+Prod_{ktp} &\in \{0, 1\} && \forall k \in K, t \in T, p \in P \\
+q_{ikpt} &\ge 0 && \forall i \in V, k \in K, p \in P, t \in T \\
+Deliv_{spkt} &\ge 0 && \forall s \in S, p \in P, k \in K, t \in T \\
+QLoad_{dktp} &\ge 0 && \forall d \in D, k \in K, t \in T, p \in P
+\end{align*}
+
+\section{Récapitulatif du modèle PLNEM}
+
+\subsection{Fonction objectif}
+
+\begin{equation*}
+\begin{split}
+\min \quad & \sum_{k \in K} \sum_{t \in T} \sum_{p \in P} \sum_{i \in V} \sum_{j \in V} c_{ij} x_{ijkpt} + \sum_{k \in K} \sum_{t \in T} \sum_{p' \in P} \sum_{\substack{p \in P \\ p \neq p'}} Change_{p'p} \cdot Switch_{kt p' p} \\
+& + \sum_{k \in K} \sum_{d \in D} c_{g_k d} \cdot Start_{g_k d k} + \sum_{k \in K} \sum_{t \in T} \sum_{p \in P} \sum_{s \in S} c_{s g_k} \cdot Fin_{s g_k k p t}
+\end{split}
+\end{equation*}
+
+\subsection{Contraintes}
+
+\begin{align}
+& \sum_{k \in K} \sum_{t \in T} Deliv_{spkt} = d_{sp} && \forall s \in S, \forall p \in P \tag{C1} \\
+& \sum_{d \in D} Start_{g_k d k} = Used_{k1} && \forall k \in K \tag{C2} \\
+& \sum_{s \in S} \sum_{p \in P} \sum_{t \in T} Fin_{s g_k k p t} = Used_{k1} && \forall k \in K \tag{C3} \\
+& \sum_{i \in V} x_{iskpt} = \sum_{j \in V} x_{sjkpt} + Fin_{s g_k k p t} && \forall s, k, p, t \tag{C4} \\
+& \sum_{j \in V} x_{djkpt} = Load_{dktp} + \sum_{i \in V} x_{idkpt} - EndDepot_{dkpt} && \forall d, k, p, t \tag{C5} \\
+& \sum_{d \in D} EndDepot_{dkpt} + \sum_{s \in S} Fin_{s g_k k p t} = Prod_{ktp} && \forall k, p, t \tag{C6} \\
+& Used_{k(t+1)} = \sum_{d \in D} \sum_{p \in P} EndDepot_{dkpt} && \forall k, \forall t \in T \setminus \{\max T\} \tag{C7a} \\
+& \sum_{p \in P} Load_{d,k,(t+1),p} = \sum_{p \in P} EndDepot_{dkpt} && \forall d, k, \forall t \in T \setminus \{\max T\} \tag{C7b} \\
+& \sum_{t \in T} \sum_{i \in V} x_{iskpt} \le 1 && \forall s, k, p \tag{C8} \\
+& \sum_{t \in T} \sum_{j \in V} x_{djkpt} = \sum_{t \in T} Load_{dktp} && \forall d, k, p \tag{C8} \\
+& Deliv_{spkt} \le M \sum_{i \in V} x_{iskpt} && \forall s, k, p, t \tag{C9} \\
+& \sum_{s \in S} Deliv_{spkt} = QLoad_{dktp} && \forall d, k, t, p \tag{C10} \\
+& QLoad_{dktp} \le M \cdot Load_{dktp} && \forall d, k, t, p \tag{C11} \\
+& QLoad_{dktp} \ge \epsilon \cdot Load_{dktp} && \forall d, k, t, p \tag{C11bis} \\
+& \sum_{k \in K} \sum_{t \in T} QLoad_{dktp} \le S_{dp} && \forall d, p \tag{C12} \\
+& \sum_{d \in D}\sum_{p \in P} QLoad_{dktp} \le C_k \cdot Used_{kt} && \forall k, t \tag{C13} \\
+& q_{dkpt} = QLoad_{dktp} && \forall d, k, t, p \tag{C14-MTZ1} \\
+& q_{jkpt} \le q_{ikpt} - Deliv_{jpkt} + M(1 - x_{ijkpt}) && \forall i, j, k, t, p \tag{C14-MTZ2} \\
+& q_{ikpt} \le C_k \cdot \sum_{j \in V} x_{ijkpt} && \forall i, k, t, p \tag{C14-MTZ3} \\
+& \sum_{p \in P} \sum_{d \in D} Load_{dktp} = Used_{kt} && \forall k, t \tag{C15} \\
+& Prod_{ktp} = \sum_{d \in D} Load_{dktp} && \forall k, t, p \tag{C15bis} \\
+& Used_{kt} \ge Used_{k(t+1)} && \forall k, t < \max T \tag{C16} \\
+& Switch_{kt p' p} \ge Prod_{k(t-1) p'} + Prod_{kt p} - 1 && \forall k, t, p' \neq p \tag{C17}
+\end{align}
+
+\vspace{0.5em}
+\noindent\textbf{Note :} Pour C17 avec $t=1$, on utilise $Prod_{k,0,p'} = 1$ si $p' = P_k^{\text{initial}}$, sinon 0.
+
+\end{document}

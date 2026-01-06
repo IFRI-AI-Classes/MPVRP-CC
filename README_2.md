@@ -1,74 +1,61 @@
-# MPVRP-CRP Solver
+# MPVRP-CC / MPVRP-CRP (core/model)
 
-Ce projet implémente un solveur pour le **Problème de Tournée de Véhicules Multi-Produits Multi-Dépôts avec Coûts de Changement de Produit (MPVRP-CRP)**. Il utilise la programmation linéaire en nombres entiers mixtes (PLNEM) via la librairie PuLP pour trouver des solutions optimales.
+Ce module contient le solveur et le vérificateur du **Multi-Product Vehicle Routing Problem** (multi-dépôts, multi-produits) avec **coût de changement de produit**. L’implémentation principale est en Python avec PuLP (CBC par défaut).
 
-Le projet inclut également un outil de visualisation interactif pour analyser les tournées générées.
+## Entrypoints
 
-## Structure du Projet
+- Solveur (modèle par segments) : `core/model/mpvrp_solver.py`
+- Vérificateur : `core/model/mpvrp_verify.py`
+- Scoring / notation : `core/model/mpvrp_score.py`
 
-- **`mpvrp_solver.py`** : Le script principal du solveur.
-- **`mpvrp_verify_v2.py`** : Pour vérifier la validité d'une solution (continuité des trajets, respect des capacités, stocks, demandes).
-- **`vrp_professional.html`** : L'interface de visualisation des solutions.
-- **`data/`** : Dossier contenant les instances du problème (fichiers `.dat`).
-- **`solutions/`** : Dossier où sont exportées les solutions (fichiers `.json`).
-- **`visu/`** : Dossier pour les ressources de visualisation.
+Les fichiers d’instances sont dans `data/instances/` et les fichiers de solutions exportées dans `data/solutions/`.
 
-## Installation
+## Format des instances (.dat)
 
-Assurez-vous d'avoir Python installé (3.8+ recommandé).
+La première ligne non commentée contient 5 entiers dans l’ordre suivant :
 
-Installez les dépendances nécessaires :
+`NbProduits  NbDepots  NbGarages  NbStations  NbVehicules`
 
-```bash
-pip install pulp networkx
-```
+Puis :
 
-## Utilisation
+1) matrice des coûts de changement (NbProduits lignes, NbProduits colonnes)
+2) véhicules (NbVehicules lignes) : `ID  Capacité  GarageOrigine  ProduitInitial`
+3) dépôts (NbDepots lignes) : `ID  X  Y  Stock_P1 ... Stock_Pp`
+4) garages (NbGarages lignes) : `ID  X  Y`
+5) stations (NbStations lignes) : `ID  X  Y  Demande_P1 ... Demande_Pp`
 
-### 1. Résolution d'une instance
+## Format des solutions (.dat)
 
-1.  Placez vos fichiers d'instance (`.dat`) dans le dossier `data/`.
-2.  Lancez le solveur :
-    ```bash
-    python mpvrp_solver.py
-    ```
-3.  Le programme listera les fichiers disponibles. Entrez le nom du fichier souhaité (ex: `MPVRP_3_s3_d1_p2.dat`).
-4.  La solution sera calculée et exportée automatiquement dans le dossier `solutions/` au format JSON.
+Le solveur exporte des solutions au format texte à 2 lignes par véhicule, puis 6 lignes de métriques.
 
-### 2. Visualisation
+### IDs des nœuds (sans accumulation, sans préfixe)
 
-1.  Ouvrez le fichier `vrp_professional.html` dans un navigateur web moderne (Chrome, Firefox, Edge).
-2.  Glissez-déposez le fichier d'instance (`.dat` ou `.json`) dans la zone **Instance File**.
-3.  Glissez-déposez le fichier de solution généré (`.json` depuis le dossier `solutions/`) dans la zone **Solution File**.
-4.  Utilisez les contrôles de lecture pour animer les tournées des véhicules.
-### 3. Vérification de la solution
+Les IDs écrits dans le fichier solution sont des **entiers**, dans la même plage que dans l'instance (pas d'accumulation).
+Le type est inféré par convention :
 
-1.  Lancez le script de vérification :
-    ```bash
-    python mpvrp_verify_v2.py
-    ```
-2.  Entrez le nom du fichier instance (ex: `MPVRP_3_s3_d1_p2.dat`).
-3.  Le script chargera automatiquement la solution correspondante dans `solutions/` et affichera un rapport détaillé.
-## Format des Fichiers
+- 1er et dernier nœud de la route : garages
+- nœud avec crochets `[q]` : dépôt
+- nœud avec parenthèses `(q)` : station
 
-### Fichiers d'Instance (`.dat`)
-Le format attendu est le suivant :
-- **Ligne 1** : Dimensions (`NbVéhicules NbDépôts NbProduits NbStations NbGarages`)
-- **Lignes suivantes** : Matrice des coûts de changement de produit.
-- **Lignes suivantes** : Définition des véhicules.
-- **Lignes suivantes** : Définition des dépôts (ID, X, Y, Stocks...).
-- **Lignes suivantes** : Définition des garages (ID, X, Y).
-- **Lignes suivantes** : Définition des stations (ID, X, Y, Demandes...).
+Exemple : `2 - 1 [150] - 5 (93) - 2`.
 
-### Fichiers de Solution (`.json`)
-Contient la structure complète de la solution :
-- `objective` : Valeur de la fonction objectif (coût total).
-- `status` : Statut de la résolution (Optimal, Infeasible...).
-- `routes` : Détail des itinéraires par véhicule, ordonnés chronologiquement.
-- `summary` : Résumés des livraisons, chargements et changements de produits.
+Compatibilité : le vérificateur et la visualisation acceptent encore l'ancien format numérique par offsets (garages puis dépôts puis stations).
 
-## Technologies
+## Exécution
 
-- **Python** : Langage de programmation.
-- **PuLP** : Modélisation et résolution de problèmes d'optimisation.
-- **HTML5/JS/Canvas** : Visualisation interactive.
+Depuis la racine du projet :
+
+- Solveur : `python core/model/mpvrp_solver.py`
+- Vérification d’une solution : `python core/model/mpvrp_verify.py`
+- Score d’une solution : `python core/model/mpvrp_score.py`
+
+Le script de scoring vérifie d’abord la validité de la solution, puis calcule un score (sur 100) basé sur l’utilisation de la flotte, la qualité du routage et la gestion des produits.
+
+## Visualisation
+
+La visualisation lit :
+
+- une instance `.dat` (pour les coordonnées)
+- une solution `.dat` (pour les arcs)
+
+Fichier : `app/templates/visualisation.html`

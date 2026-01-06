@@ -732,9 +732,9 @@
                 <div class="upload-zone" id="solutionZone" onclick="document.getElementById('solutionUpload').click()" style="margin-top: 16px;">
                     <div class="upload-icon">🎯</div>
                     <div class="upload-text">Solution File</div>
-                    <div class="upload-hint">Drop JSON or click to browse</div>
+                    <div class="upload-hint">Drop .dat, .json or click to browse</div>
                 </div>
-                <input type="file" id="solutionUpload" class="file-input" accept=".json">
+                <input type="file" id="solutionUpload" class="file-input" accept=".json,.dat,.txt">
                 <div class="file-status" id="solutionStatus">
                     <span class="file-status-icon">⏳</span>
                     <span>No solution loaded</span>
@@ -870,6 +870,9 @@
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         let width, height;
+
+        // Cached transform from instance coordinates to screen coordinates
+        let coordTransform = null;
         
         let isPlaying = false;
         let progress = 0;
@@ -947,7 +950,11 @@
                         }
                         updateFileStatus('instance', file.name);
                     } else {
-                        solution = JSON.parse(content);
+                        if (file.name.endsWith('.dat') || file.name.endsWith('.txt')) {
+                            solution = parseDatSolution(content);
+                        } else {
+                            solution = JSON.parse(content);
+                        }
                         updateFileStatus('solution', file.name);
                     }
                     initData();
@@ -961,13 +968,51 @@
         }
 
         function parseDatInstance(text) {
-            const lines = text.trim().split('\n').map(l => l.trim()).filter(l => l);
+            const lines = text.trim().split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
             let lineIdx = 0;
 
-            // Line 0: Dimensions
-            // num_vehicles num_depots num_products num_stations num_garages
+            // Dimensions
+            // Two conventions exist in the project history:
+            //  A) num_products num_depots num_garages num_stations num_vehicles  (used by core/model parser)
+            //  B) num_vehicles num_depots num_garages num_stations num_products  (seen in some docs)
+            // We auto-detect by validating the change-cost matrix shape.
             const dims = lines[lineIdx++].split(/\s+/).map(Number);
-            const [numVehicles, numDepots, numProducts, numStations, numGarages] = dims;
+            if (dims.length !== 5 || dims.some(n => Number.isNaN(n))) {
+                throw new Error('Invalid dimensions line in instance .dat');
+            }
+
+            const candidates = [
+                {
+                    name: 'products-first',
+                    numProducts: dims[0],
+                    numDepots: dims[1],
+                    numGarages: dims[2],
+                    numStations: dims[3],
+                    numVehicles: dims[4]
+                },
+                {
+                    name: 'vehicles-first',
+                    numVehicles: dims[0],
+                    numDepots: dims[1],
+                    numGarages: dims[2],
+                    numStations: dims[3],
+                    numProducts: dims[4]
+                }
+            ];
+
+            function matrixLooksValid(startIdx, n) {
+                if (!Number.isFinite(n) || n <= 0) return false;
+                if (startIdx + n > lines.length) return false;
+                for (let r = 0; r < n; r++) {
+                    const row = lines[startIdx + r].split(/\s+/).filter(Boolean);
+                    if (row.length < n) return false;
+                    if (row.slice(0, n).some(v => Number.isNaN(parseFloat(v)))) return false;
+                }
+                return true;
+            }
+
+            const chosen = candidates.find(c => matrixLooksValid(lineIdx, c.numProducts)) || candidates[0];
+            const { numVehicles, numDepots, numProducts, numStations, numGarages } = chosen;
 
             // Skip Change Costs (numProducts lines)
             lineIdx += numProducts;
@@ -1012,7 +1057,157 @@
                 demands.push({ station: `S${id}`, quantity: totalDemand });
             }
 
-            return { locations, demands };
+            return { 
+                locations, 
+                demands,
+                num_vehicles: numVehicles,
+                num_depots: numDepots,
+                num_products: numProducts,
+                num_stations: numStations,
+                num_garages: numGarages
+            };
+        }
+
+        function parseDatSolution(text) {
+            const lines = text.trim().split('\n').map(l => l.trim()).filter(l => l);
+            let lineIdx = 0;
+            
+            const solution = {
+                routes: {},
+                metrics: {}
+            };
+            
+            // Parse vehicle routes until we reach metrics
+            while (lineIdx < lines.length) {
+                const line = lines[lineIdx];
+                
+                // Check if this is a vehicle line in format "ID: <route>"
+                const idMatch = line.match(/^\s*(\d+)\s*:\s*(.*)$/);
+                if (idMatch) {
+                    const vehicleId = parseInt(idMatch[1]);
+                    // route content after the colon
+                    let routeLine = idMatch[2].trim();
+                    lineIdx++;
+
+                    // Find next non-empty line for products
+                    while (lineIdx < lines.length && lines[lineIdx].trim() === '') {
+                        lineIdx++;
+                    }
+                    if (lineIdx >= lines.length) break;
+
+                    let productsLineRaw = lines[lineIdx].trim();
+                    // Remove optional "ID: " prefix from products line
+                    productsLineRaw = productsLineRaw.replace(/^\s*\d+\s*:\s*/, '');
+                    lineIdx++;
+
+                    // Parse the route (split by " - ") and build segments
+                    const routeParts = routeLine.split(' - ').map(p => p.trim());
+                    const segments = [];
+
+                    const extractNodeId = (token, position, lastPosition) => {
+                        // Token may be: "12", "12 [..]", "12 (..)", or typed "G2"/"D1"/"S5".
+                        const raw = String(token).trim();
+                        const base = raw.split('[', 1)[0].split('(', 1)[0].trim();
+
+                        const typed = base.match(/^([GDS])(\d+)$/i);
+                        if (typed) {
+                            return `${typed[1].toUpperCase()}${parseInt(typed[2], 10)}`;
+                        }
+
+                        const numeric = base.match(/^(?:N)?(\d+)$/);
+                        if (!numeric) return null;
+                        const n = parseInt(numeric[1], 10);
+
+                        // New convention (no prefixes): infer by markers/position.
+                        if (raw.includes('[')) return `D#${n}`;
+                        if (raw.includes('(')) return `S#${n}`;
+                        if (position === 0 || position === lastPosition) return `G#${n}`;
+                        // Default: treat as garage token (rare), keep marker so mapping can decide.
+                        return `G#${n}`;
+                    };
+
+                    const lastPos = routeParts.length - 1;
+                    for (let i = 0; i < routeParts.length - 1; i++) {
+                        const current = routeParts[i];
+                        const next = routeParts[i + 1];
+
+                        const fromId = extractNodeId(current, i, lastPos);
+                        const toId = extractNodeId(next, i + 1, lastPos);
+
+                        if (fromId && toId) {
+                            segments.push([fromId, toId]);
+                        }
+                    }
+
+                    solution.routes[`V${vehicleId}`] = segments;
+
+                    // Skip empty line separators
+                    while (lineIdx < lines.length && lines[lineIdx].trim() === '') {
+                        lineIdx++;
+                    }
+                } else {
+                    // We've reached the metrics section
+                    break;
+                }
+            }
+            
+            // Parse metrics (last 6 lines)
+            if (lineIdx + 5 < lines.length) {
+                solution.metrics = {
+                    vehicles_used: parseInt(lines[lineIdx]),
+                    product_changes: parseInt(lines[lineIdx + 1]),
+                    routing_cost: parseFloat(lines[lineIdx + 2]),
+                    total_cost: parseFloat(lines[lineIdx + 3]),
+                    solver: lines[lineIdx + 4],
+                    time: parseFloat(lines[lineIdx + 5])
+                };
+                
+                solution.objective = solution.metrics.total_cost;
+                solution.status = 'Solved';
+            }
+            
+            return solution;
+        }
+
+        function mapNodeNumber(nodeStr, numGarages, numDepots, numStations) {
+            // If already typed, pass through
+            const typed = String(nodeStr).match(/^([GDS])(\d+)$/i);
+            if (typed) return `${typed[1].toUpperCase()}${parseInt(typed[2], 10)}`;
+
+            // Internal marked tokens from parseDatSolution: G#12 / D#3 / S#5
+            const marked = String(nodeStr).match(/^([GDS])#(\d+)$/i);
+            if (marked) {
+                const kind = marked[1].toUpperCase();
+                const n = parseInt(marked[2], 10);
+
+                // If n fits the natural range for the kind, use it directly (no accumulation)
+                if (kind === 'G' && n <= numGarages) return `G${n}`;
+                if (kind === 'D' && n <= numDepots) return `D${n}`;
+                if (kind === 'S' && n <= numStations) return `S${n}`;
+
+                // Otherwise assume legacy offset numeric and map by accumulation
+                if (kind === 'G') return (n <= numGarages) ? `G${n}` : `G${Math.max(1, n)}`;
+                if (kind === 'D') {
+                    if (n <= numGarages + numDepots) return `D${n - numGarages}`;
+                    return `D${Math.max(1, n - numGarages)}`;
+                }
+                // S
+                return `S${Math.max(1, n - numGarages - numDepots)}`;
+            }
+
+            // Accept both "N123" and "123"
+            const match = String(nodeStr).match(/^(?:N)?(\d+)$/);
+            if (!match) return nodeStr;
+
+            const nodeNum = parseInt(match[1], 10);
+            
+            if (nodeNum <= numGarages) {
+                return `G${nodeNum}`;
+            } else if (nodeNum <= numGarages + numDepots) {
+                return `D${nodeNum - numGarages}`;
+            } else {
+                return `S${nodeNum - numGarages - numDepots}`;
+            }
         }
 
         function updateFileStatus(type, filename) {
@@ -1044,58 +1239,46 @@
                 stationDemands[d.station] = (stationDemands[d.station] || 0) + d.quantity;
             });
 
+            // Get instance dimensions for node mapping
+            const numGarages = instance.num_garages || 3;
+            const numDepots = instance.num_depots || 2; 
+            const numStations = instance.num_stations || 5;
+
             // Process Routes
-            Object.entries(solution.routes || {}).forEach(([id, routeData], idx) => {
-                if (!routeData || routeData.length === 0) return;
+            Object.entries(solution.routes || {}).forEach(([id, segments], idx) => {
+                if (!segments || segments.length === 0) return;
 
-                let segments = [];
-                
-                // Handle new format (list of objects) or old format (list of arcs)
-                if (Array.isArray(routeData)) {
-                    routeData.forEach(step => {
-                        if (step.type === 'start' || step.type === 'end') {
-                            segments.push([step.from, step.to]);
-                        } else if (step.arcs) {
-                            segments.push(...step.arcs);
-                        } else if (Array.isArray(step) && step.length === 2) {
-                            // Old format direct arc
-                            segments.push(step);
-                        }
-                    });
-                }
-
-                // Fallback for very old format if needed (flat list of arcs)
-                if (segments.length === 0 && Array.isArray(routeData) && Array.isArray(routeData[0])) {
-                     // Check if it's [[u,v], [v,w]]
-                     if (typeof routeData[0][0] === 'string') {
-                         segments = routeData;
-                     }
-                }
+                // Convert node numbers to proper IDs
+                const convertedSegments = segments.map(([from, to]) => {
+                    const fromId = mapNodeNumber(from, numGarages, numDepots, numStations);
+                    const toId = mapNodeNumber(to, numGarages, numDepots, numStations);
+                    return [fromId, toId];
+                });
 
                 trucks.push({
                     id,
                     color: TRUCK_COLORS[idx % TRUCK_COLORS.length],
-                    segments,
+                    segments: convertedSegments,
                     totalDist: 0
                 });
 
-                segments.forEach(seg => {
-                    const dest = seg[1];
-                    if (dest && dest.startsWith('S')) {
-                        stationVisits[dest] = (stationVisits[dest] || 0) + 1;
+                convertedSegments.forEach(([from, to]) => {
+                    if (to && to.startsWith('S')) {
+                        stationVisits[to] = (stationVisits[to] || 0) + 1;
                     }
                 });
 
-                maxProgress = Math.max(maxProgress, segments.length);
+                maxProgress = Math.max(maxProgress, convertedSegments.length);
             });
 
             // Update Stats
-            document.getElementById('stat-dist').textContent = (solution.objective || 0).toFixed(2) + ' km';
-            document.getElementById('stat-trucks').textContent = trucks.length;
+            const metrics = solution.metrics || {};
+            document.getElementById('stat-dist').textContent = (metrics.total_cost || solution.objective || 0).toFixed(2) + ' km';
+            document.getElementById('stat-trucks').textContent = metrics.vehicles_used || trucks.length;
             
             let totalSegs = trucks.reduce((sum, t) => sum + t.segments.length, 0);
             document.getElementById('stat-segments').textContent = totalSegs;
-            document.getElementById('stat-status').textContent = solution.status || '-';
+            document.getElementById('stat-status').textContent = solution.status || 'Loaded';
 
             // Update Fleet Legend
             const legendEl = document.getElementById('fleet-legend');
@@ -1134,34 +1317,73 @@
             canvas.height = container.clientHeight * dpr;
             canvas.style.width = container.clientWidth + 'px';
             canvas.style.height = container.clientHeight + 'px';
-            
+
+            // Reset transform before applying device-pixel scaling; otherwise it accumulates
+            // and the drawing progressively shrinks/grows on each resize.
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
             ctx.scale(dpr, dpr);
             
             width = container.clientWidth;
             height = container.clientHeight;
+
+            computeCoordTransform();
             
             draw();
         }
 
         window.addEventListener('resize', resize);
 
+        function computeCoordTransform() {
+            if (!instance.locations || Object.keys(instance.locations).length === 0 || !width || !height) {
+                coordTransform = null;
+                return;
+            }
+
+            // Compute tight bounds then add 10% margin on each axis (world-units)
+            const allPoints = Object.values(instance.locations);
+            const allX = allPoints.map(p => p[0]);
+            const allY = allPoints.map(p => p[1]);
+            const rawMinX = Math.min(...allX), rawMaxX = Math.max(...allX);
+            const rawMinY = Math.min(...allY), rawMaxY = Math.max(...allY);
+
+            const rawW = rawMaxX - rawMinX;
+            const rawH = rawMaxY - rawMinY;
+            const marginX = rawW > 0 ? 0.1 * rawW : 1;
+            const marginY = rawH > 0 ? 0.1 * rawH : 1;
+
+            const minX = rawMinX - marginX;
+            const maxX = rawMaxX + marginX;
+            const minY = rawMinY - marginY;
+            const maxY = rawMaxY + marginY;
+
+            const worldW = (maxX - minX) || 1;
+            const worldH = (maxY - minY) || 1;
+
+            // Fit to canvas while keeping aspect ratio
+            const scale = Math.min(width / worldW, height / worldH);
+
+            // Center the drawing area
+            const offsetX = (width - worldW * scale) / 2;
+            const offsetY = (height - worldH * scale) / 2;
+
+            coordTransform = { minX, minY, scale, offsetX, offsetY };
+        }
+
         function getCoords(locId) {
             if (!instance.locations || !instance.locations[locId]) return { x: 0, y: 0 };
 
+            if (!coordTransform) {
+                computeCoordTransform();
+            }
+            if (!coordTransform) {
+                return { x: 0, y: 0 };
+            }
+
             const [x, y] = instance.locations[locId];
-            const padding = 80;
-            const allX = Object.values(instance.locations).map(p => p[0]);
-            const allY = Object.values(instance.locations).map(p => p[1]);
-            const minX = Math.min(...allX), maxX = Math.max(...allX);
-            const minY = Math.min(...allY), maxY = Math.max(...allY);
+            const { minX, minY, scale, offsetX, offsetY } = coordTransform;
 
-            const scaleX = (width - padding * 2) / (maxX - minX || 1);
-            const scaleY = (height - padding * 2) / (maxY - minY || 1);
-            const scale = Math.min(scaleX, scaleY);
-
-            const screenX = padding + (x - minX) * scale + (width - padding * 2 - (maxX - minX) * scale) / 2;
-            const screenY = padding + (y - minY) * scale + (height - padding * 2 - (maxY - minY) * scale) / 2;
-
+            const screenX = offsetX + (x - minX) * scale;
+            const screenY = offsetY + (y - minY) * scale;
             return { x: screenX, y: screenY };
         }
 
