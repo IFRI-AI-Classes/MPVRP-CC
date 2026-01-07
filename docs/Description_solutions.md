@@ -2,6 +2,14 @@
 
 ## Structure du fichier
 
+### Ligne 0 : UUID (commentaire)
+```
+# 3f2a9c7e-6c2a-4a91-9f84-8c6c5e3b2f41
+```
+- Identifiant unique UUID v4 de l'instance
+- Garantit l'unicité absolue de chaque fichier
+- Ignoré par le parseur (ligne de commentaire `#`)
+
 ### Ligne 1 : Paramètres globaux
 ```
 2  1  2  3  2
