@@ -25,8 +25,13 @@ python instance_provider.py -i <id> -v <véhicules> -d <dépôts> -g <garages> -
 # Instance basique.
 python instance_provider.py -i 01 -v 3 -d 2 -g 2 -s 5 -p 3
 
-# Avec options avancées.
+# Avec grille et seed pour reproductibilité.
 python instance_provider.py -i 02 -v 5 -d 3 -g 2 -s 10 -p 4 --grid 200 --seed 42
+
+# Avec intervalles de coûts et demandes personnalisés (instance difficile).
+python instance_provider.py -i 03 -v 3 -d 2 -g 2 -s 8 -p 3 \
+  --min-transition-cost 20 --max-transition-cost 100 \
+  --min-demand 2000 --max-demand 8000 --min-capacity 15000 --max-capacity 30000
 
 # Écraser un fichier existant.
 python instance_provider.py -i 01 -v 3 -d 2 -g 2 -s 5 -p 3 --force
@@ -45,7 +50,10 @@ python instance_provider.py -i 01 -v 3 -d 2 -g 2 -s 5 -p 3 --force
 | `--grid` | - | Taille de la grille (coordonnées) | 100 |
 | `--min-capacity` | - | Capacité minimale véhicule | 10000 |
 | `--max-capacity` | - | Capacité maximale véhicule | 25000 |
-| `--max-demand` | - | Demande maximale par station | 5000 |
+| `--min-transition-cost` | - | Coût min changement produit ($C_{min}$) | 10.0 |
+| `--max-transition-cost` | - | Coût max changement produit ($C_{max}$) | 80.0 |
+| `--min-demand` | - | Demande min par station/produit ($D_{min}$) | 500 |
+| `--max-demand` | - | Demande max par station/produit ($D_{max}$) | 5000 |
 | `--seed` | - | Graine aléatoire (reproductibilité) | - |
 | `--force` | `-f` | Écraser fichier existant | False |
 
@@ -60,7 +68,7 @@ python instance_provider.py -i 01 -v 3 -d 2 -g 2 -s 5 -p 3 --force
 
 **Matrice de coûts de transition** (produit → produit).
 - Diagonale : 0 (pas de coût pour même produit).
-- Autres cases : coûts aléatoires entre 10 et 80.
+- Autres cases : coûts aléatoires entre `--min-transition-cost` et `--max-transition-cost` (défaut : 10 à 80).
 
 **Véhicules** (flotte hétérogène).
 - ID unique séquentiel.
@@ -71,7 +79,9 @@ python instance_provider.py -i 01 -v 3 -d 2 -g 2 -s 5 -p 3 --force
 **Stations** (clients).
 - ID unique séquentiel.
 - Coordonnées (x, y) aléatoires dans la grille.
-- Demandes par produit : 0 ou [500, max_demand] unités.
+- Demandes par produit : **Chaque station DOIT avoir au moins une demande non-nulle pour au moins un produit**
+  - Chaque produit : 0 ou [`--min-demand`, `--max-demand`] unités (défaut : 500 à 5000)
+  - Garantie : aucune station n'est générée sans aucune demande
 
 **Dépôts** (approvisionnement).
 - ID unique séquentiel.
@@ -198,9 +208,10 @@ Faisabilité : ✅ FAISABLE / ⚠️ À vérifier
 | **Garages valides** | ✅ | ✅ | Garages des véhicules existent |
 | **Produits initiaux valides** | ✅ | ✅ | Produits ∈ [1, nb_p] |
 | **Diagonale matrice = 0** | ✅ | ✅ | Pas de coût pour même produit |
+| **Station avec ≥1 demande** | ✅ | ✅ | Chaque station a ≥1 demande pour ≥1 produit |
 | **Faisabilité stocks** | ✅ | ✅ | Stock ≥ Demande par produit |
 | **Capacités positives** | ✅ | ✅ | Capacités véhicules > 0 |
-| **Demande ≤ Capacité max** | ✅ | ✅ | Chaque demande ≤ plus grand camion |
+| **Demande ≤ Capacité totale flotte** | ✅ | ✅ | Split Delivery : chaque demande ≤ somme capacités |
 | **Chevauchement géographique** | ⚠️ | ⚠️ | Avertissement si dist < 0.1 |
 | **Inégalité triangulaire** | ❌ | ⚠️ | Avertissement si Cost(i→k) > Cost(i→j) + Cost(j→k) |
 | **Fichier existant** | ✅ | ❌ | Vérification avant écrasement |
