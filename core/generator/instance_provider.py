@@ -28,6 +28,9 @@ def parse_args():
     parser.add_argument('--grid', type=float, default=100.0, help="Taille de la grille (défaut: 100)")
     parser.add_argument('--min-capacity', type=int, default=10000, help="Capacité min véhicule (défaut: 10000)")
     parser.add_argument('--max-capacity', type=int, default=25000, help="Capacité max véhicule (défaut: 25000)")
+    parser.add_argument('--min-transition-cost', type=float, default=10.0, help="Coût min changement produit (défaut: 10.0)")
+    parser.add_argument('--max-transition-cost', type=float, default=80.0, help="Coût max changement produit (défaut: 80.0)")
+    parser.add_argument('--min-demand', type=int, default=500, help="Demande min par station/produit (défaut: 500)")
     parser.add_argument('--max-demand', type=int, default=5000, help="Demande max par station (défaut: 5000)")
     parser.add_argument('--seed', type=int, help="Graine aléatoire pour reproductibilité")
     parser.add_argument('--force', '-f', action='store_true', help="Écraser le fichier existant sans confirmation")
@@ -132,6 +135,13 @@ def validate_instance(params, vehicles, depots, garages, stations, transition_co
     if not np.all(vehicles[:, 1] > 0):
         errors.append("Capacités de véhicules non positives détectées")
     
+    # Vérification: chaque station doit avoir au moins une demande non-nulle
+    for s in stations:
+        station_id = int(s[0])
+        demands = s[3:]
+        if not any(d > 0 for d in demands):
+            errors.append(f"Station {station_id}: Aucune demande pour aucun produit")
+    
     # Vérification demande individuelle <= capacité totale flotte (Split Delivery)
     # Un camion ne peut desservir une station qu'une fois pour un produit,
     # mais plusieurs camions peuvent desservir la même station pour le même produit
@@ -163,7 +173,9 @@ def validate_instance(params, vehicles, depots, garages, stations, transition_co
 
 
 def generer_instance(id_inst=None, nb_v=None, nb_d=None, nb_g=None, nb_s=None, nb_p=None,
-                     max_coord=100.0, min_capacite=10000, max_capacite=25000, max_demand=5000, 
+                     max_coord=100.0, min_capacite=10000, max_capacite=25000, 
+                     min_transition_cost=10.0, max_transition_cost=80.0,
+                     min_demand=500, max_demand=5000, 
                      seed=None, force_overwrite=False):
     """
     Génère une instance MPVRP-CC.
@@ -181,7 +193,10 @@ def generer_instance(id_inst=None, nb_v=None, nb_d=None, nb_g=None, nb_s=None, n
         max_coord: Taille de la grille
         min_capacite: Capacité minimale des véhicules
         max_capacite: Capacité maximale des véhicules
-        max_demand: Demande maximale par station
+        min_transition_cost: Coût min changement produit
+        max_transition_cost: Coût max changement produit
+        min_demand: Demande minimale par station/produit
+        max_demand: Demande maximale par station/produit
         seed: Graine aléatoire pour reproductibilité
         force_overwrite: Si True, écrase le fichier existant sans confirmation
     
@@ -274,7 +289,7 @@ def generer_instance(id_inst=None, nb_v=None, nb_d=None, nb_g=None, nb_s=None, n
             if i == j:
                 transition_costs[i, j] = 0.0
             else:
-                transition_costs[i, j] = round(random.uniform(10, 80), 1)
+                transition_costs[i, j] = round(random.uniform(min_transition_cost, max_transition_cost), 1)
     
     # 3. Véhicules (NbVehicules x 4: ID, capacity, garage_id, product_init)
     vehicles = []
@@ -286,12 +301,28 @@ def generer_instance(id_inst=None, nb_v=None, nb_d=None, nb_g=None, nb_s=None, n
     vehicles = np.array(vehicles)
     
     # 4. Stations d'abord pour calculer les demandes totales (NbStations x (3 + NbProduits))
+    # Chaque station DOIT avoir au moins une demande non-nulle pour au moins un produit
     stations = []
     total_demands = np.zeros(nb_p)  # Somme des demandes par produit
     for i in range(1, nb_s + 1):
         x = round(random.uniform(0, max_coord), 1)
         y = round(random.uniform(0, max_coord), 1)
-        demands = [random.choice([0, random.randint(500, max_demand)]) for _ in range(nb_p)]
+        
+        # Générer les demandes avec garantie qu'au moins une est non-nulle
+        demands = [0] * nb_p
+        has_demand = False
+        
+        for _ in range(nb_p):  # Tentative d'assigner au moins une demande
+            demands = [random.choice([0, random.randint(min_demand, max_demand)]) for _ in range(nb_p)]
+            if any(d > 0 for d in demands):
+                has_demand = True
+                break
+        
+        # Si aucune demande n'a été générée, en assigner une aléatoire à un produit
+        if not has_demand:
+            product_idx = random.randint(0, nb_p - 1)
+            demands[product_idx] = random.randint(min_demand, max_demand)
+        
         stations.append([i, x, y] + demands)
         total_demands += np.array(demands)
     stations = np.array(stations)
@@ -376,6 +407,9 @@ if __name__ == "__main__":
             max_coord=args.grid,
             min_capacite=args.min_capacity,
             max_capacite=args.max_capacity,
+            min_transition_cost=args.min_transition_cost,
+            max_transition_cost=args.max_transition_cost,
+            min_demand=args.min_demand,
             max_demand=args.max_demand,
             seed=args.seed,
             force_overwrite=args.force

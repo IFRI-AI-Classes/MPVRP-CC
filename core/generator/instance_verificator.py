@@ -230,16 +230,18 @@ class InstanceVerificator:
         # Demandes > 0 pour au moins une station
         stations = self.data['stations']
         total_demand_exists = False
+        stations_without_demand = []
         for s in stations:
             demands = s[3:]
             if np.sum(demands) > 0:
                 total_demand_exists = True
-                break
+            else:
+                stations_without_demand.append(int(s[0]))
         
-        if not total_demand_exists:
-            self.warnings.append(" Aucune demande dans les stations")
+        if stations_without_demand:
+            self.errors.append(f"❌ Station(s) sans aucune demande : {stations_without_demand}")
         else:
-            print("✓ Au moins une station avec demande")
+            print("✓ Toutes les stations ont au moins une demande")
         
         # Stocks >= 0
         depots = self.data['depots']
