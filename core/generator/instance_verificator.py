@@ -30,10 +30,19 @@ class InstanceVerificator:
         # 4. Vérifications de validité
         self.check_validity()
         
-        # 5. Vérifications de faisabilité
+        # 5. Vérification Demande ≤ Capacité max
+        self.check_capacity_demand()
+        
+        # 6. Vérification chevauchement géographique
+        self.check_geographic_overlap()
+        
+        # 7. Vérification inégalité triangulaire (matrice de transition)
+        self.check_triangle_inequality()
+        
+        # 8. Vérifications de faisabilité
         self.check_feasibility()
         
-        # 6. Vérifications géométriques
+        # 9. Vérifications géométriques
         self.check_geometry()
         
         # Afficher le rapport
@@ -69,6 +78,20 @@ class InstanceVerificator:
             
             if len(lines) < 6:
                 self.errors.append("❌ Fichier mal formaté : pas assez de sections")
+                return False
+            
+            # Lire les paramètres pour calculer le nombre exact de lignes attendues
+            first_line_params = [int(x) for x in lines[0].split()]
+            if len(first_line_params) != 5:
+                self.errors.append(f"❌ Ligne 1 : attendu 5 paramètres, trouvé {len(first_line_params)}")
+                return False
+            
+            nb_p_temp, nb_d_temp, nb_g_temp, nb_s_temp, nb_v_temp = first_line_params
+            expected_lines = 1 + nb_p_temp + nb_v_temp + nb_d_temp + nb_g_temp + nb_s_temp
+            
+            if len(lines) != expected_lines:
+                self.errors.append(f"❌ Nombre de lignes incorrect : attendu {expected_lines}, trouvé {len(lines)}")
+                self.errors.append(f"   Détail attendu : 1 (params) + {nb_p_temp} (matrice) + {nb_v_temp} (véhicules) + {nb_d_temp} (dépôts) + {nb_g_temp} (garages) + {nb_s_temp} (stations)")
                 return False
             
             # Parsing - Ordre: nb_p, nb_d, nb_g, nb_s, nb_v
@@ -141,24 +164,35 @@ class InstanceVerificator:
                 print(f"✓ {name} : {self.data[key]}")
     
     def check_unique_ids(self):
-        """Vérifie que les IDs sont uniques pour chaque type d'entité"""
-        print("\n🔢 Vérifications des IDs uniques :")
+        """Vérifie que les IDs sont uniques ET contigus [1, n] pour chaque type d'entité"""
+        print("\n🔢 Vérifications des IDs (unicité et contiguïté) :")
         
         entities = [
-            ('vehicles', 'Véhicules'),
-            ('depots', 'Dépôts'),
-            ('garages', 'Garages'),
-            ('stations', 'Stations')
+            ('vehicles', 'Véhicules', self.data['nb_v']),
+            ('depots', 'Dépôts', self.data['nb_d']),
+            ('garages', 'Garages', self.data['nb_g']),
+            ('stations', 'Stations', self.data['nb_s'])
         ]
         
-        for key, name in entities:
+        for key, name, expected_count in entities:
             ids = [int(row[0]) for row in self.data[key]]
             unique_ids = set(ids)
+            expected_ids = set(range(1, expected_count + 1))
+            
+            # Vérifier unicité
             if len(ids) != len(unique_ids):
                 duplicates = [id for id in ids if ids.count(id) > 1]
                 self.errors.append(f"❌ IDs dupliqués pour {name} : {set(duplicates)}")
+            # Vérifier contiguïté [1, n]
+            elif unique_ids != expected_ids:
+                missing = expected_ids - unique_ids
+                extra = unique_ids - expected_ids
+                if missing:
+                    self.errors.append(f"❌ IDs manquants pour {name}: {sorted(missing)}")
+                if extra:
+                    self.errors.append(f"❌ IDs hors plage pour {name}: {sorted(extra)} (attendu: 1-{expected_count})")
             else:
-                print(f"✓ IDs {name} uniques")
+                print(f"✓ IDs {name} valides [1-{expected_count}]")
     
     def check_validity(self):
         """Vérifie la validité des données"""
@@ -213,6 +247,121 @@ class InstanceVerificator:
             print("✓ Stocks non-négatifs")
         else:
             self.errors.append("❌ Stocks négatifs détectés")
+    
+    def check_capacity_demand(self):
+        """Vérifie que chaque demande individuelle ≤ capacité max camion"""
+        print("\n🚛 Vérification Demande ≤ Capacité max :")
+        
+        vehicles = self.data['vehicles']
+        stations = self.data['stations']
+        max_capacity = np.max(vehicles[:, 1])
+        
+        violations = []
+        for s in stations:
+            station_id = int(s[0])
+            for p_idx, demand in enumerate(s[3:]):
+                if demand > max_capacity:
+                    violations.append(f"Station {station_id}, Produit {p_idx+1}: {demand:.0f} > {max_capacity:.0f}")
+        
+        if violations:
+            self.errors.append(f"❌ {len(violations)} demande(s) dépassent la capacité max ({max_capacity:.0f}):")
+            for v in violations[:5]:  # Limiter l'affichage
+                self.errors.append(f"   - {v}")
+            if len(violations) > 5:
+                self.errors.append(f"   ... et {len(violations) - 5} autre(s)")
+        else:
+            print(f"✓ Toutes les demandes ≤ Capacité max ({max_capacity:.0f})")
+    
+    def check_geographic_overlap(self):
+        """Vérifie qu'il n'y a pas de chevauchement géographique"""
+        print("\n📍 Vérification chevauchement géographique :")
+        
+        min_distance = 0.1  # Distance minimale entre deux points
+        all_points = []
+        
+        for d in self.data['depots']:
+            all_points.append(('Dépôt', int(d[0]), d[1], d[2]))
+        for g in self.data['garages']:
+            all_points.append(('Garage', int(g[0]), g[1], g[2]))
+        for s in self.data['stations']:
+            all_points.append(('Station', int(s[0]), s[1], s[2]))
+        
+        overlaps = []
+        for i in range(len(all_points)):
+            for j in range(i + 1, len(all_points)):
+                p1, p2 = all_points[i], all_points[j]
+                dist = np.sqrt((p1[2] - p2[2])**2 + (p1[3] - p2[3])**2)
+                if dist < min_distance:
+                    overlaps.append(f"{p1[0]} {p1[1]} et {p2[0]} {p2[1]} (dist={dist:.3f})")
+        
+        if overlaps:
+            self.warnings.append(f"⚠️ {len(overlaps)} chevauchement(s) détecté(s):")
+            for o in overlaps:
+                self.warnings.append(f"   - {o}")
+        else:
+            print("✓ Pas de chevauchement géographique")
+    
+    def check_triangle_inequality(self):
+        """
+        Vérifie l'inégalité triangulaire sur la matrice des coûts de transition.
+        
+        Pour tout triplet de produits (i, j, k):
+        Cost(i → k) ≤ Cost(i → j) + Cost(j → k)
+        
+        Si non respectée, c'est un WARNING (pas une erreur) car :
+        - C'est réaliste physiquement (certains nettoyages sont plus complexes)
+        - Le solveur pourrait exploiter des "changements intermédiaires"
+        """
+        print("\n🔺 Vérification inégalité triangulaire (matrice de transition) :")
+        
+        transition = self.data['transition_costs']
+        nb_p = self.data['nb_p']
+        
+        if nb_p < 3:
+            print("✓ Moins de 3 produits : vérification non applicable")
+            return
+        
+        violations = []
+        
+        for i in range(nb_p):
+            for k in range(nb_p):
+                if i == k:
+                    continue
+                direct_cost = transition[i, k]
+                
+                for j in range(nb_p):
+                    if j == i or j == k:
+                        continue
+                    indirect_cost = transition[i, j] + transition[j, k]
+                    
+                    if direct_cost > indirect_cost:
+                        violations.append({
+                            'from': i + 1,
+                            'to': k + 1,
+                            'via': j + 1,
+                            'direct': direct_cost,
+                            'indirect': indirect_cost,
+                            'savings': direct_cost - indirect_cost
+                        })
+        
+        if violations:
+            # Trier par économie décroissante
+            violations.sort(key=lambda x: x['savings'], reverse=True)
+            
+            self.warnings.append(f"⚠️ Inégalité triangulaire non respectée ({len(violations)} cas) :")
+            self.warnings.append(f"   → Le solveur pourrait utiliser des changements intermédiaires")
+            
+            # Afficher les 5 cas les plus significatifs
+            for v in violations[:5]:
+                self.warnings.append(
+                    f"   - P{v['from']}→P{v['to']} : direct={v['direct']:.1f} > "
+                    f"via P{v['via']} ({v['indirect']:.1f}) | Économie: {v['savings']:.1f}"
+                )
+            
+            if len(violations) > 5:
+                self.warnings.append(f"   ... et {len(violations) - 5} autre(s) cas")
+        else:
+            print("✓ Inégalité triangulaire respectée (matrice métrique)")
     
     def check_feasibility(self):
         """Vérifie la faisabilité"""

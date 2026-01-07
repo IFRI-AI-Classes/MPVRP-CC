@@ -79,11 +79,24 @@ def validate_instance(params, vehicles, depots, garages, stations, transition_co
     if nb_p_val < 1:
         errors.append("Au moins 1 produit requis")
     
-    # Vérification IDs uniques
-    for name, data in [('véhicules', vehicles), ('dépôts', depots), ('garages', garages), ('stations', stations)]:
+    # Vérification IDs uniques ET contigus [1, n]
+    entity_counts = [('véhicules', vehicles, nb_v), ('dépôts', depots, nb_d), 
+                     ('garages', garages, nb_g), ('stations', stations, nb_s)]
+    for name, data, expected_count in entity_counts:
         ids = [int(row[0]) for row in data]
+        # IDs uniques
         if len(ids) != len(set(ids)):
             errors.append(f"IDs dupliqués pour {name}")
+        # IDs contigus [1, n]
+        expected_ids = set(range(1, expected_count + 1))
+        actual_ids = set(ids)
+        if actual_ids != expected_ids:
+            missing = expected_ids - actual_ids
+            extra = actual_ids - expected_ids
+            if missing:
+                errors.append(f"IDs manquants pour {name}: {sorted(missing)}")
+            if extra:
+                errors.append(f"IDs hors plage pour {name}: {sorted(extra)} (attendu: 1-{expected_count})")
     
     # Vérification garages utilisés existent
     garage_ids = set(int(g[0]) for g in garages)
@@ -118,6 +131,31 @@ def validate_instance(params, vehicles, depots, garages, stations, transition_co
     # Vérification capacités positives
     if not np.all(vehicles[:, 1] > 0):
         errors.append("Capacités de véhicules non positives détectées")
+    
+    # Vérification demande individuelle ≤ capacité max camion
+    max_capacity = np.max(vehicles[:, 1])
+    for s in stations:
+        station_id = int(s[0])
+        for p_idx, demand in enumerate(s[3:]):
+            if demand > max_capacity:
+                errors.append(f"Station {station_id}, Produit {p_idx+1}: Demande ({demand:.0f}) > Capacité max ({max_capacity:.0f})")
+    
+    # Vérification chevauchement géographique (distance minimale)
+    min_distance = 0.1  # Distance minimale entre deux points
+    all_points = []
+    for d in depots:
+        all_points.append(('Dépôt', int(d[0]), d[1], d[2]))
+    for g in garages:
+        all_points.append(('Garage', int(g[0]), g[1], g[2]))
+    for s in stations:
+        all_points.append(('Station', int(s[0]), s[1], s[2]))
+    
+    for i in range(len(all_points)):
+        for j in range(i + 1, len(all_points)):
+            p1, p2 = all_points[i], all_points[j]
+            dist = np.sqrt((p1[2] - p2[2])**2 + (p1[3] - p2[3])**2)
+            if dist < min_distance:
+                warnings.append(f"Chevauchement: {p1[0]} {p1[1]} et {p2[0]} {p2[1]} (dist={dist:.2f})")
     
     return errors, warnings
 

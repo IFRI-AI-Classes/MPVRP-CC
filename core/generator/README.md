@@ -1,34 +1,34 @@
-# README - Générateur et Vérificateur d'Instances MPVRP-CC
+# README - Générateur et vérificateur d'instances MPVRP-CC
 
 ## Vue d'ensemble
 Ce module contient les outils de **génération** et de **vérification** d'instances pour le problème **Multi-Product Vehicle Routing Problem with Changeover Cost** (MPVRP-CC).
 
 ---
 
-# 1. Générateur d'Instances (`instance_provider.py`)
+# 1. Générateur d'instances (`instance_provider.py`)
 
 ## Modes d'utilisation
 
-### Mode Interactif
+### Mode interactif
 ```bash
 python instance_provider.py
 ```
 Suivre les instructions pour saisir les paramètres un par un.
 
-### Mode Ligne de Commande
+### Mode ligne de commande
 ```bash
 python instance_provider.py -i <id> -v <véhicules> -d <dépôts> -g <garages> -s <stations> -p <produits>
 ```
 
 **Exemples :**
 ```bash
-# Instance basique
+# Instance basique.
 python instance_provider.py -i 01 -v 3 -d 2 -g 2 -s 5 -p 3
 
-# Avec options avancées
+# Avec options avancées.
 python instance_provider.py -i 02 -v 5 -d 3 -g 2 -s 10 -p 4 --grid 200 --seed 42
 
-# Écraser un fichier existant
+# Écraser un fichier existant.
 python instance_provider.py -i 01 -v 3 -d 2 -g 2 -s 5 -p 3 --force
 ```
 
@@ -58,38 +58,38 @@ python instance_provider.py -i 01 -v 3 -d 2 -g 2 -s 5 -p 3 --force
 
 ### Étape 2 : Génération des données
 
-**Matrice de coûts de transition** (produit → produit)
-- Diagonale : 0 (pas de coût pour même produit)
-- Autres cases : coûts aléatoires entre 10 et 80
+**Matrice de coûts de transition** (produit → produit).
+- Diagonale : 0 (pas de coût pour même produit).
+- Autres cases : coûts aléatoires entre 10 et 80.
 
-**Véhicules** (flotte hétérogène)
-- ID unique séquentiel
-- Capacité variable : [min_capacite, max_capacite]
-- Garage de départ : assigné aléatoirement parmi les garages existants
-- Produit initial : assigné aléatoirement parmi les produits
+**Véhicules** (flotte hétérogène).
+- ID unique séquentiel.
+- Capacité variable : [min_capacite, max_capacite].
+- Garage de départ : assigné aléatoirement parmi les garages existants.
+- Produit initial : assigné aléatoirement parmi les produits.
 
-**Stations** (clients)
-- ID unique séquentiel
-- Coordonnées (x, y) aléatoires dans la grille
-- Demandes par produit : 0 ou [500, max_demand] unités
+**Stations** (clients).
+- ID unique séquentiel.
+- Coordonnées (x, y) aléatoires dans la grille.
+- Demandes par produit : 0 ou [500, max_demand] unités.
 
-**Dépôts** (approvisionnement)
-- ID unique séquentiel
-- Coordonnées (x, y) aléatoires
+**Dépôts** (approvisionnement).
+- ID unique séquentiel.
+- Coordonnées (x, y) aléatoires.
 - Stocks calculés pour **garantir la faisabilité** : 
   - `stock[p] = demande_totale[p] / nb_dépôts + marge_aléatoire`
 
-**Garages** (points de départ/retour)
-- ID unique séquentiel
-- Coordonnées (x, y) aléatoires uniquement
+**Garages** (points de départ/retour).
+- ID unique séquentiel.
+- Coordonnées (x, y) aléatoires uniquement.
 
 ### Étape 3 : Validation interne
 Avant écriture, le générateur valide automatiquement l'instance (voir section Synthèse).
 
 ### Étape 4 : Vérification ID unique
-- **L'ID doit être unique** parmi tous les fichiers d'instances existants
-- Deux fichiers avec métadonnées différentes mais même ID = **erreur**
-- Liste des IDs existants affichée en cas de conflit
+- **L'ID doit être unique** parmi tous les fichiers d'instances existants.
+- Deux fichiers avec métadonnées différentes mais même ID = **erreur**.
+- Liste des IDs existants affichée en cas de conflit.
 
 ### Étape 5 : Vérification fichier existant
 - Si le fichier existe en **mode interactif** : demande confirmation ou nouvel ID
@@ -107,7 +107,7 @@ Emplacement : `data/instances/`
 
 ---
 
-# 2. Vérificateur d'Instances (`instance_verificator.py`)
+# 2. Vérificateur d'instances (`instance_verificator.py`)
 
 ## Utilisation
 ```bash
@@ -133,11 +133,11 @@ python instance_verificator.py ../../data/instances/MPVRP_01_s5_d2_p3.dat
 - ✅ Au moins 1 station
 - ✅ Au moins 1 produit
 
-### 2.3 Vérifications des IDs uniques
-- ✅ IDs véhicules uniques
-- ✅ IDs dépôts uniques
-- ✅ IDs garages uniques
-- ✅ IDs stations uniques
+### 2.3 Vérifications des IDs
+- ✅ IDs véhicules uniques ET contigus [1, nb_v]
+- ✅ IDs dépôts uniques ET contigus [1, nb_d]
+- ✅ IDs garages uniques ET contigus [1, nb_g]
+- ✅ IDs stations uniques ET contigus [1, nb_s]
 
 ### 2.4 Vérifications de validité
 - ✅ Garages utilisés par véhicules existent
@@ -147,10 +147,25 @@ python instance_verificator.py ../../data/instances/MPVRP_01_s5_d2_p3.dat
 - ✅ Au moins une station avec demande > 0
 - ✅ Stocks des dépôts non-négatifs
 
-### 2.5 Vérifications de faisabilité
+### 2.5 Vérifications de capacité
+- ✅ **Demande ≤ Capacité max** : Chaque demande individuelle ne dépasse pas la capacité du plus grand camion
+
+### 2.6 Vérifications géographiques
+- ⚠️ **Chevauchement** : Avertissement si deux points sont à distance < 0.1
+
+### 2.7 Vérification inégalité triangulaire
+- ⚠️ **Inégalité triangulaire** : Vérifie que pour tout triplet (i, j, k) :
+  
+  $$Cost(P_i \to P_k) \leq Cost(P_i \to P_j) + Cost(P_j \to P_k)$$
+  
+  - Si **non respectée** : Avertissement (pas erreur bloquante)
+  - **Raison** : Dans la réalité, certains nettoyages directs peuvent être plus coûteux qu'un passage intermédiaire (chimie complexe)
+  - **Impact** : Le solveur pourrait exploiter des "changements fantômes" pour économiser sur les coûts de nettoyage
+
+### 2.8 Vérifications de faisabilité
 - ✅ Stock total ≥ Demande totale (par produit)
 
-### 2.6 Vérifications géométriques
+### 2.9 Vérifications géométriques
 - ✅ Pas de valeurs NaN ou Inf
 - ✅ Coordonnées non-négatives (avertissement si négatif)
 - ✅ Capacités des véhicules strictement positives
@@ -171,22 +186,26 @@ Faisabilité : ✅ FAISABLE / ⚠️ À vérifier
 
 ---
 
-# 3. Synthèse des Vérifications
+# 3. Synthèse des vérifications
 
-## Comparaison Provider vs Vérificateur
+## Comparaison provider vs vérificateur
 
 | Vérification | Provider | Vérificateur | Description |
 |--------------|:--------:|:------------:|-------------|
 | **Éléments minimaux** | ✅ | ✅ | nb_v, nb_d, nb_g, nb_s, nb_p ≥ 1 |
 | **IDs uniques** | ✅ | ✅ | Pas de doublons d'IDs par entité |
+| **IDs contigus [1,n]** | ✅ | ✅ | IDs dans l'intervalle attendu |
 | **Garages valides** | ✅ | ✅ | Garages des véhicules existent |
 | **Produits initiaux valides** | ✅ | ✅ | Produits ∈ [1, nb_p] |
 | **Diagonale matrice = 0** | ✅ | ✅ | Pas de coût pour même produit |
 | **Faisabilité stocks** | ✅ | ✅ | Stock ≥ Demande par produit |
 | **Capacités positives** | ✅ | ✅ | Capacités véhicules > 0 |
+| **Demande ≤ Capacité max** | ✅ | ✅ | Chaque demande ≤ plus grand camion |
+| **Chevauchement géographique** | ⚠️ | ⚠️ | Avertissement si dist < 0.1 |
+| **Inégalité triangulaire** | ❌ | ⚠️ | Avertissement si Cost(i→k) > Cost(i→j) + Cost(j→k) |
 | **Fichier existant** | ✅ | ❌ | Vérification avant écrasement |
 | **Existence fichier** | ❌ | ✅ | Fichier .dat existe |
-| **Format fichier** | ❌ | ✅ | Structure correcte du .dat |
+| **Format fichier (nb lignes)** | ❌ | ✅ | Nombre exact de lignes attendu |
 | **Matrice carrée** | ❌ | ✅ | Dimensions nb_p × nb_p |
 | **Demandes existantes** | ❌ | ✅ | Au moins 1 station avec demande |
 | **Stocks non-négatifs** | ❌ | ✅ | Stocks dépôts ≥ 0 |
@@ -202,7 +221,7 @@ Faisabilité : ✅ FAISABLE / ⚠️ À vérifier
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    WORKFLOW RECOMMANDÉ                       │
+│                 WORKFLOW RECOMMANDÉ                          │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  1. Génération    ──►  instance_provider.py                 │
@@ -226,7 +245,7 @@ Faisabilité : ✅ FAISABLE / ⚠️ À vérifier
 
 ---
 
-# 4. Format du Fichier d'Instance (.dat)
+# 4. Format du fichier d'instance (.dat)
 
 ```
 # UUID v4 (commentaire - identifiant unique)
