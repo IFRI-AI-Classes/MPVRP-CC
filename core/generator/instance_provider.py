@@ -132,13 +132,15 @@ def validate_instance(params, vehicles, depots, garages, stations, transition_co
     if not np.all(vehicles[:, 1] > 0):
         errors.append("Capacités de véhicules non positives détectées")
     
-    # Vérification demande individuelle ≤ capacité max camion
-    max_capacity = np.max(vehicles[:, 1])
+    # Vérification demande individuelle <= capacité totale flotte (Split Delivery)
+    # Un camion ne peut desservir une station qu'une fois pour un produit,
+    # mais plusieurs camions peuvent desservir la même station pour le même produit
+    total_capacity = np.sum(vehicles[:, 1])
     for s in stations:
         station_id = int(s[0])
         for p_idx, demand in enumerate(s[3:]):
-            if demand > max_capacity:
-                errors.append(f"Station {station_id}, Produit {p_idx+1}: Demande ({demand:.0f}) > Capacité max ({max_capacity:.0f})")
+            if demand > total_capacity:
+                errors.append(f"Station {station_id}, Produit {p_idx+1}: Demande ({demand:.0f}) > Capacité totale flotte ({total_capacity:.0f})")
     
     # Vérification chevauchement géographique (distance minimale)
     min_distance = 0.1  # Distance minimale entre deux points

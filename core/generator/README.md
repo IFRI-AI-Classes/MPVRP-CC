@@ -148,7 +148,7 @@ python instance_verificator.py ../../data/instances/MPVRP_01_s5_d2_p3.dat
 - ✅ Stocks des dépôts non-négatifs
 
 ### 2.5 Vérifications de capacité
-- ✅ **Demande ≤ Capacité max** : Chaque demande individuelle ne dépasse pas la capacité du plus grand camion
+- ✅ **Demande ≤ Capacité totale flotte** : Chaque demande par station/produit ne doit pas dépasser la capacité cumulée de tous les camions (Split Delivery : un camion ne dessert une station qu'une fois par produit, mais plusieurs camions peuvent desservir la même station)
 
 ### 2.6 Vérifications géographiques
 - ⚠️ **Chevauchement** : Avertissement si deux points sont à distance < 0.1

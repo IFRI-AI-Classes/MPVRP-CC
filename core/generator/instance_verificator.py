@@ -249,28 +249,36 @@ class InstanceVerificator:
             self.errors.append("❌ Stocks négatifs détectés")
     
     def check_capacity_demand(self):
-        """Vérifie que chaque demande individuelle ≤ capacité max camion"""
-        print("\n🚛 Vérification Demande ≤ Capacité max :")
+        """Vérifie que chaque demande <= capacité totale flotte (Split Delivery)
+        
+        Contrainte de Split Delivery:
+        - Un camion ne peut desservir une station qu'une fois pour un produit
+        - Plusieurs camions peuvent desservir la même station pour le même produit
+        - Donc : demande(s, p) <= SUM(capacités de tous les camions)
+        """
+        print("\n🚗 Vérification capacité (Split Delivery) :")
         
         vehicles = self.data['vehicles']
         stations = self.data['stations']
-        max_capacity = np.max(vehicles[:, 1])
+        total_capacity = np.sum(vehicles[:, 1])
         
         violations = []
         for s in stations:
             station_id = int(s[0])
             for p_idx, demand in enumerate(s[3:]):
-                if demand > max_capacity:
-                    violations.append(f"Station {station_id}, Produit {p_idx+1}: {demand:.0f} > {max_capacity:.0f}")
+                if demand < 0:
+                    violations.append(f"Station {station_id}, Produit {p_idx+1}: Demande négative ({demand:.0f})")
+                elif demand > total_capacity:
+                    violations.append(f"Station {station_id}, Produit {p_idx+1}: {demand:.0f} > {total_capacity:.0f} (capacité totale)")
         
         if violations:
-            self.errors.append(f"❌ {len(violations)} demande(s) dépassent la capacité max ({max_capacity:.0f}):")
-            for v in violations[:5]:  # Limiter l'affichage
+            self.errors.append(f"❌ {len(violations)} demande(s) dépassent la capacité totale flotte ({total_capacity:.0f}):")
+            for v in violations[:5]:
                 self.errors.append(f"   - {v}")
             if len(violations) > 5:
                 self.errors.append(f"   ... et {len(violations) - 5} autre(s)")
         else:
-            print(f"✓ Toutes les demandes ≤ Capacité max ({max_capacity:.0f})")
+            print(f"✓ Toutes les demandes ≤ Capacité totale flotte ({total_capacity:.0f})")
     
     def check_geographic_overlap(self):
         """Vérifie qu'il n'y a pas de chevauchement géographique"""
