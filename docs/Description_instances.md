@@ -41,30 +41,46 @@ Le fichier .dat est organisé en sections consécutives, chaque section étant u
 par des tabulations. Voici la structure générale :
 
 ```text
-1 NbVehicules NbDepots NbGarages NbStations NbProduits
-2
-3 Cost_P1 ->P1 Cost_P1 ->P2 ... Cost_P1 ->Pp
-4 Cost_P2 ->P1 Cost_P2 ->P2 ... Cost_P2 ->Pp
-5 ...
-6 Cost_Pp ->P1 Cost_Pp ->P2 ... Cost_Pp ->Pp
-7
-8 V_ID C a p a c i t GarageOrigine ProduitInitial
-9 ...
-10
-11 D_ID X Y Stock_P1 Stock_P2 ... Stock_Pp
-12 ...
-13
-14 G_ID X Y
-15 ...
-16
-17 S_ID X Y Demande_P1 Demande_P2 ... Demande_Pp
-18 ...
+1 # UUID (identifiant unique)
+2 NbVehicules NbDepots NbGarages NbStations NbProduits
+3
+4 Cost_P1 ->P1 Cost_P1 ->P2 ... Cost_P1 ->Pp
+5 Cost_P2 ->P1 Cost_P2 ->P2 ... Cost_P2 ->Pp
+6 ...
+7 Cost_Pp ->P1 Cost_Pp ->P2 ... Cost_Pp ->Pp
+8
+9 V_ID Capacité GarageOrigine ProduitInitial
+10 ...
+11
+12 D_ID X Y Stock_P1 Stock_P2 ... Stock_Pp
+13 ...
+14
+15 G_ID X Y
+16 ...
+17
+18 S_ID X Y Demande_P1 Demande_P2 ... Demande_Pp
+19 ...
 ```
 
 ### 3.1 Détail de Chaque Section
 
-#### 3.1.1 Ligne 1 : Paramètres Globaux
+#### 3.1.1 Ligne 1 : UUID (Identifiant unique)
 
+Format :
+
+```text
+# {UUID-v4}
+```
+
+La première ligne contient un commentaire commençant par `#` suivi d'un UUID v4 unique généré pour chaque instance.
+Cet identifiant garantit l'unicité globale de l'instance et permet de tracer son origine.
+
+**Exemple** :
+```text
+# c01ab718-9a2c-4a7d-bb95-f37e2a389409
+```
+
+#### 3.1.2 Ligne 2 : Paramètres Globaux
 
 Format :
 
@@ -83,7 +99,7 @@ Une seule ligne contenant les 5 paramètres globaux, séparés par des tabulatio
 | NbProduits  	| integer 	| Nombre de produits à distribuer 	|
 
 
-#### 3.1.2 Lignes 2 à (1+NbProduits) : Matrice de Coûts de Transition
+#### 3.1.3 Lignes 3 à (2+NbProduits) : Matrice de Coûts de Transition
 
 Format (une ligne par produit source) :
 ```text
@@ -91,17 +107,17 @@ Cost_Pi->P1 Cost_Pi->P2 ... Cost_Pi->Pp
 ```
 
 La matrice de coûts de transition est une matrice carrée de taille NbProduits × NbProduits exportée par
-NumPy. L’élément à la ligne i et colonne j représente le coût de transition du produit Pi au produit Pj. La
+NumPy. L'élément à la ligne i et colonne j représente le coût de transition du produit Pi au produit Pj. La
 diagonale (i=j) est généralement 0. Les colonnes sont séparées par des tabulations.
 
 **Exemple** : Pour 2 produits :
 ```text
-1 0.0 78.
-2 60.3 0.
+0.0 78.
+60.3 0.
 ```
-Cela signifie : P1→P2 coûte 78.5 et P2→P1 coûte 60.3.
+Cela signifie : P1→P2 coûte 78.0 et P2→P1 coûte 60.3.
 
-#### 3.1.3 Véhicules
+#### 3.1.4 Véhicules
 
 Format (une ligne par véhicule) :
 ```text
@@ -123,7 +139,7 @@ Tableau avec NbVehicules lignes et 4 colonnes. Les colonnes sont séparées par 
 1 1 20000 2 1
 2 2 20000 2 2
 ```
-#### 3.1.4 Dépôts
+#### 3.1.5 Dépôts
 
 Format (une ligne par dépôt) :
 
@@ -147,7 +163,7 @@ Les stocks sont listés dans l’ordre des produits. Si un dépôt ne dispose pa
 | Stock_Pi  | int   | Quantité disponible du produit Pi  |
 
 
-#### 3.1.5 Garages
+#### 3.1.6 Garages
 
 Format (une ligne par garage) :
 
@@ -170,7 +186,7 @@ Tableau avec NbGarages lignes et 3 colonnes. Les colonnes sont séparées par de
 1 1 50.6 24.
 2 2 37.3 17.
 ```
-#### 3.1.6 Stations
+#### 3.1.7 Stations
 
 Format (une ligne par station) :
 
@@ -204,27 +220,30 @@ de ce produit.
 Voici un exemple complet d’un fichier d’instance (MPVRP_4_s3_d1_p2.dat avec 2 véhicules, 1 dépôt, 2
 garages, 3 stations, 2 produits) :
 ```text
-1 2 1 2 3 2
-2 0.0 78.
-3 60.3 0.
-4 1 20000 2 1
-5 2 20000 2 2
-6 1 37.3 35.5 56449 86791
-7 1 50.6 24.
-8 2 37.3 17.
-9 1 5.6 93.7 1154 0
-10 2 44.7 92.5 0 0
-11 3 10.8 60.8 2541 0
+# c01ab718-9a2c-4a7d-bb95-f37e2a389409
+2 1 2 3 2
+0.0 78.
+60.3 0.
+1 20000 2 1
+2 20000 2 2
+1 37.3 35.5 56449 86791
+1 50.6 24.
+2 37.3 17.
+1 5.6 93.7 1154 0
+2 44.7 92.5 0 0
+3 10.8 60.8 2541 0
 ```
 
 **Interprétation** :
-- Ligne 1 : 2 véhicules, 1 dépôt, 2 garages, 3 stations, 2 produits
-- Lignes 2-3 : Matrice de coûts de transition 2× 2
+- Ligne 1 : UUID unique de l'instance
+- Ligne 2 : 2 véhicules, 1 dépôt, 2 garages, 3 stations, 2 produits
+- Lignes 3-4 : Matrice de coûts de transition 2× 2
   - P1→P1 : 0.0, P1→P2 : 78.
   - P2→P1 : 60.3, P2→P2 : 0.
-- Lignes 4-5 : 2 véhicules (capacité 20000 chacun)
-  - V1 au garage G2, produit initial P
-  - V2 au garage G2, produit initial P
-- Ligne 6 : Dépôt D1 à position (37.3, 35.5), stocks P1 : 56449, P2 : 86791
-- Lignes 7-8 : Garages G1 et G
+- Lignes 5-6 : 2 véhicules (capacité 20000 chacun)
+  - V1 au garage G2, produit initial P1
+  - V2 au garage G2, produit initial P2
+- Ligne 7 : Dépôt D1 à position (37.3, 35.5), stocks P1 : 56449, P2 : 86791
+- Lignes 8-9 : Garages G1 et G2
+- Lignes 10-12 : 3 stations avec leurs demandes
 - Lignes 9-11 : 3 stations avec leurs demandes
