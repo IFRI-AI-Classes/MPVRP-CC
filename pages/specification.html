@@ -81,13 +81,27 @@
         <div class="accordion">
             <div class="accordion-item active">
                 <div class="accordion-header">
-                    <span>1. Paramètres globaux (Ligne 1)</span>
+                    <span>1. UUID (Identifiant unique) - Ligne 1</span>
                     <svg class="icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
                 </div>
                 <div class="accordion-content">
-                    <p>La première ligne définit les dimensions du problème :</p>
+                    <p>La première ligne contient un UUID v4 unique généré pour chaque instance :</p>
+                    <pre># c01ab718-9a2c-4a7d-bb95-f37e2a389409</pre>
+                    <p>Cet identifiant garantit l'unicité globale de l'instance et permet de tracer son origine.</p>
+                </div>
+            </div>
+
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <span>2. Paramètres globaux (Ligne 2)</span>
+                    <svg class="icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </div>
+                <div class="accordion-content">
+                    <p>La deuxième ligne définit les dimensions du problème :</p>
                     <pre>NbVehicules  NbDepots  NbGarages  NbStations  NbProduits</pre>
                     <p><strong>Exemple :</strong> <code>5 2 1 20 3</code></p>
                     <ul>
@@ -102,7 +116,7 @@
 
         <div class="accordion-item">
             <div class="accordion-header">
-                <span>2. Matrice de coûts de transition</span>
+                <span>3. Matrice de coûts de transition</span>
                 <svg class="icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                 </svg>
@@ -123,7 +137,7 @@ Cost_P2→P1  Cost_P2→P2  ...
 
             <div class="accordion-item">
                 <div class="accordion-header">
-                    <span>3. Flotte de véhicules</span>
+                    <span>4. Flotte de véhicules</span>
                     <svg class="icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
@@ -143,7 +157,7 @@ Cost_P2→P1  Cost_P2→P2  ...
 
             <div class="accordion-item">
                 <div class="accordion-header">
-                    <span>4. Dépôts (points de chargement)</span>
+                    <span>5. Dépôts (points de chargement)</span>
                     <svg class="icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
@@ -160,7 +174,7 @@ Cost_P2→P1  Cost_P2→P2  ...
 
             <div class="accordion-item">
                 <div class="accordion-header">
-                    <span>5. Garages (bases)</span>
+                    <span>6. Garages (bases)</span>
                     <svg class="icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
@@ -174,7 +188,7 @@ Cost_P2→P1  Cost_P2→P2  ...
 
             <div class="accordion-item">
                 <div class="accordion-header">
-                    <span>6. Stations-service (clients)</span>
+                    <span>7. Stations-service (clients)</span>
                     <svg class="icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
@@ -190,7 +204,8 @@ Cost_P2→P1  Cost_P2→P2  ...
             </div>
     </div>
     <h3>Exemple d'instance</h3>
-    <pre>2	1	2	3	2
+    <pre># c01ab718-9a2c-4a7d-bb95-f37e2a389409
+2	1	2	3	2
 0.0	18.1
 61.5	0.0
 1	20000	1	1

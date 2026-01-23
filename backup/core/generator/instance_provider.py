@@ -176,7 +176,7 @@ def generer_instance(id_inst=None, nb_v=None, nb_d=None, nb_g=None, nb_s=None, n
                      max_coord=100.0, min_capacite=10000, max_capacite=25000, 
                      min_transition_cost=10.0, max_transition_cost=80.0,
                      min_demand=500, max_demand=5000, 
-                     seed=None, force_overwrite=False):
+                     seed=None, force_overwrite=False, output_dir=None, silent=False):
     """
     Génère une instance MPVRP-CC.
     
@@ -199,12 +199,19 @@ def generer_instance(id_inst=None, nb_v=None, nb_d=None, nb_g=None, nb_s=None, n
         max_demand: Demande maximale par station/produit
         seed: Graine aléatoire pour reproductibilité
         force_overwrite: Si True, écrase le fichier existant sans confirmation
+        output_dir: Dossier de sortie personnalisé (optionnel, défaut: ../../data/instances)
+        silent: Si True, supprime tous les prints (mode batch)
     
     Returns:
         str: Chemin du fichier généré, ou None si erreur
     """
     # Mode interactif si paramètres manquants
     interactive = any(p is None for p in [id_inst, nb_v, nb_d, nb_g, nb_s, nb_p])
+    
+    # Fonction helper pour print conditionnel
+    def log(msg):
+        if not silent:
+            print(msg)
     
     if interactive:
         print("--- Générateur d'instance MPVRP-CC (Mode Interactif) ---\n")
@@ -216,19 +223,24 @@ def generer_instance(id_inst=None, nb_v=None, nb_d=None, nb_g=None, nb_s=None, n
         nb_p = int(input("Nombre de produits : ")) if nb_p is None else nb_p
         max_coord = float(input("Taille de la grille (ex: 100 pour une grille 100x100) : "))
     else:
-        print(f"--- Génération instance MPVRP-CC ---")
-        print(f"Paramètres: id={id_inst}, v={nb_v}, d={nb_d}, g={nb_g}, s={nb_s}, p={nb_p}")
+        log(f"--- Génération instance MPVRP-CC ---")
+        log(f"Paramètres: id={id_inst}, v={nb_v}, d={nb_d}, g={nb_g}, s={nb_s}, p={nb_p}")
     
     # Seed pour reproductibilité
     if seed is not None:
         random.seed(seed)
         np.random.seed(seed)
-        print(f"Seed: {seed}")
+        log(f"Seed: {seed}")
     
     # Nom du fichier selon la nomenclature demandée
     filename = f"MPVRP_{id_inst}_s{nb_s}_d{nb_d}_p{nb_p}.dat"
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    instances_dir = os.path.join(script_dir, "../../data/instances")
+    
+    # Déterminer le dossier de sortie
+    if output_dir is not None:
+        instances_dir = output_dir
+    else:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        instances_dir = os.path.join(script_dir, "../../data/instances")
     
     # Créer le dossier instances s'il n'existe pas
     if not os.path.exists(instances_dir):
@@ -350,26 +362,26 @@ def generer_instance(id_inst=None, nb_v=None, nb_d=None, nb_g=None, nb_s=None, n
     garages = np.array(garages)
     
     # 7. Validation avant écriture
-    print("\n🔍 Validation de l'instance...")
+    log("\n🔍 Validation de l'instance...")
     errors, warnings = validate_instance(params, vehicles, depots, garages, stations, transition_costs, nb_p)
     
     if errors:
-        print("\n❌ Erreurs de validation détectées :")
+        log("\n❌ Erreurs de validation détectées :")
         for error in errors:
-            print(f"  - {error}")
-        print("\n⚠️ Instance non générée. Corrigez les paramètres.")
+            log(f"  - {error}")
+        log("\n⚠️ Instance non générée. Corrigez les paramètres.")
         return None
     
     if warnings:
-        print("\n⚠️ Avertissements :")
+        log("\n⚠️ Avertissements :")
         for warning in warnings:
-            print(f"  - {warning}")
+            log(f"  - {warning}")
     
-    print("✅ Validation réussie !")
+    log("✅ Validation réussie !")
     
     # 8. Génération de l'UUID v4 unique pour cette instance
     instance_uuid = str(uuid.uuid4())
-    print(f"🔑 UUID généré : {instance_uuid}")
+    log(f"🔑 UUID généré : {instance_uuid}")
     
     # 9. Écriture du fichier avec les tableaux numpy
     with open(filepath, 'w') as f:
@@ -388,7 +400,7 @@ def generer_instance(id_inst=None, nb_v=None, nb_d=None, nb_g=None, nb_s=None, n
         
         np.savetxt(f, stations, fmt='%g', delimiter='\t')
 
-    print(f"\n✅ Succès ! Fichier généré : {filepath}")
+    log(f"\n✅ Succès ! Fichier généré : {filepath}")
     return filepath
 
 
