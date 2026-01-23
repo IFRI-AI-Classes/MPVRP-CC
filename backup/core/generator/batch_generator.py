@@ -370,14 +370,14 @@ def generate_category_instances(category: str, count: int, seed: int = None,
 def generate_single_instance(instance_id: str, params: dict, output_dir: str,
                               force: bool = False, seed: int = None) -> str:
     """
-    Génère une seule instance dans le dossier spécifié.
+    Génère une seule instance en déléguant à instance_provider.generer_instance().
     
-    Cette fonction est un wrapper autour de generer_instance() qui permet
-    de spécifier le dossier de sortie.
+    Le batch_generator ne se soucie que du tirage aléatoire des paramètres.
+    Toute la logique de génération et de faisabilité est gérée par instance_provider.
     
     Args:
         instance_id: Identifiant de l'instance
-        params: Paramètres de génération
+        params: Paramètres de génération (issus de generate_random_params)
         output_dir: Dossier de sortie
         force: Écraser si existe
         seed: Graine aléatoire
@@ -385,135 +385,37 @@ def generate_single_instance(instance_id: str, params: dict, output_dir: str,
     Returns:
         Chemin du fichier généré ou None
     """
-    import numpy as np
-    
-    # Configurer la graine
-    if seed is not None:
-        random.seed(seed)
-        np.random.seed(seed)
-    
-    # Nom du fichier
+    # Construire le chemin attendu pour vérification préalable
     filename = f"MPVRP_{instance_id}_s{params['nb_s']}_d{params['nb_d']}_p{params['nb_p']}.dat"
     filepath = os.path.join(output_dir, filename)
     
-    # Vérifier si existe déjà
+    # Vérifier si existe déjà (évite d'appeler generer_instance inutilement)
     if os.path.exists(filepath) and not force:
         print(f"⏭️  Fichier existant ignoré : {filename}")
         return None
     
-    # Générer les données de l'instance
-    nb_v = params['nb_v']
-    nb_d = params['nb_d']
-    nb_g = params['nb_g']
-    nb_s = params['nb_s']
-    nb_p = params['nb_p']
-    max_coord = params['max_coord']
-    min_capacite = params['min_capacite']
-    max_capacite = params['max_capacite']
-    min_demand = params['min_demand']
-    max_demand = params['max_demand']
-    min_transition_cost = params['min_transition_cost']
-    max_transition_cost = params['max_transition_cost']
+    # Déléguer la génération à instance_provider (mode silencieux)
+    result = generer_instance(
+        id_inst=instance_id,
+        nb_v=params['nb_v'],
+        nb_d=params['nb_d'],
+        nb_g=params['nb_g'],
+        nb_s=params['nb_s'],
+        nb_p=params['nb_p'],
+        max_coord=params['max_coord'],
+        min_capacite=params['min_capacite'],
+        max_capacite=params['max_capacite'],
+        min_transition_cost=params['min_transition_cost'],
+        max_transition_cost=params['max_transition_cost'],
+        min_demand=params['min_demand'],
+        max_demand=params['max_demand'],
+        seed=seed,
+        force_overwrite=force,
+        output_dir=output_dir,
+        silent=True
+    )
     
-    # 1. Paramètres globaux
-    params_array = np.array([nb_p, nb_d, nb_g, nb_s, nb_v])
-    
-    # 2. Matrice de coûts de transition (NbProduits x NbProduits)
-    transition_costs = np.zeros((nb_p, nb_p))
-    for i in range(nb_p):
-        for j in range(nb_p):
-            if i != j:
-                transition_costs[i, j] = round(random.uniform(min_transition_cost, max_transition_cost), 1)
-    
-    # 3. Stations d'abord pour calculer les demandes totales
-    stations = []
-    total_demands = np.zeros(nb_p)
-    for i in range(1, nb_s + 1):
-        x = round(random.uniform(0, max_coord), 1)
-        y = round(random.uniform(0, max_coord), 1)
-        
-        # Générer les demandes avec garantie qu'au moins une est non-nulle
-        demands = [0] * nb_p
-        has_demand = False
-        
-        for p in range(nb_p):
-            if random.random() < 0.7:  # 70% de chance d'avoir une demande
-                demands[p] = random.randint(min_demand, max_demand)
-                has_demand = True
-        
-        # Si aucune demande, en assigner une aléatoire
-        if not has_demand:
-            p_random = random.randint(0, nb_p - 1)
-            demands[p_random] = random.randint(min_demand, max_demand)
-        
-        stations.append([i, x, y] + demands)
-        total_demands += np.array(demands)
-    stations = np.array(stations)
-    
-    # 4. Véhicules
-    vehicles = []
-    for i in range(1, nb_v + 1):
-        capacity = random.randint(min_capacite, max_capacite)
-        garage_id = random.randint(1, nb_g)
-        product_init = random.randint(1, nb_p)
-        vehicles.append([i, capacity, garage_id, product_init])
-    vehicles = np.array(vehicles)
-    
-    # 5. Dépôts avec stocks garantissant la faisabilité
-    depots = []
-    for i in range(1, nb_d + 1):
-        x = round(random.uniform(0, max_coord), 1)
-        y = round(random.uniform(0, max_coord), 1)
-        stocks = []
-        for p in range(nb_p):
-            # Stock >= demande totale / nb_depots + marge de 20%
-            min_stock = int((total_demands[p] / nb_d) * 1.2) + 1000
-            max_stock = min_stock * 2
-            stocks.append(random.randint(min_stock, max_stock))
-        depots.append([i, x, y] + stocks)
-    depots = np.array(depots)
-    
-    # 6. Garages
-    garages = []
-    for i in range(1, nb_g + 1):
-        x = round(random.uniform(0, max_coord), 1)
-        y = round(random.uniform(0, max_coord), 1)
-        garages.append([i, x, y])
-    garages = np.array(garages)
-    
-    # 7. Générer UUID
-    import uuid
-    instance_uuid = str(uuid.uuid4())
-    
-    # 8. Écrire le fichier
-    try:
-        with open(filepath, 'w') as f:
-            # UUID en commentaire
-            f.write(f"# {instance_uuid}\n")
-            
-            # Paramètres globaux
-            np.savetxt(f, params_array.reshape(1, -1), fmt='%d', delimiter='\t')
-            
-            # Matrice de transition
-            np.savetxt(f, transition_costs, fmt='%.1f', delimiter='\t')
-            
-            # Véhicules
-            np.savetxt(f, vehicles, fmt='%d', delimiter='\t')
-            
-            # Dépôts
-            np.savetxt(f, depots, fmt='%.0f', delimiter='\t')
-            
-            # Garages
-            np.savetxt(f, garages, fmt='%.1f', delimiter='\t')
-            
-            # Stations
-            np.savetxt(f, stations, fmt='%.0f', delimiter='\t')
-        
-        return filepath
-        
-    except Exception as e:
-        print(f"Erreur écriture {filepath}: {e}")
-        return None
+    return result
 
 
 def print_summary(all_stats: dict, start_time: datetime, dry_run: bool = False):
