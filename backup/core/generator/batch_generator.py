@@ -501,13 +501,13 @@ def generate_single_instance(instance_id: str, params: dict, output_dir: str,
             np.savetxt(f, vehicles, fmt='%d', delimiter='\t')
             
             # Dépôts
-            np.savetxt(f, depots, fmt='%g', delimiter='\t')
+            np.savetxt(f, depots, fmt='%.0f', delimiter='\t')
             
             # Garages
-            np.savetxt(f, garages, fmt='%g', delimiter='\t')
+            np.savetxt(f, garages, fmt='%.1f', delimiter='\t')
             
             # Stations
-            np.savetxt(f, stations, fmt='%g', delimiter='\t')
+            np.savetxt(f, stations, fmt='%.0f', delimiter='\t')
         
         return filepath
         
