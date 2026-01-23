@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enoncé - MPVRP-CC</title>
+    <title>Problem Statement - MPVRP-CC</title>
     <link rel="stylesheet" href="static/css/style.css">
 </head>
 <body>
@@ -18,12 +18,12 @@
             </div>
 
             <ul class="nav-links">
-                <li><a href="../index.html"">Accueil</a></li>
+                <li><a href="../index.html">Home</a></li>
                 <li class="dropdown">
                     <a href="#" class="dropbtn">Documentation ▾</a>
                     <div class="dropdown-content">
-                        <a href="problem.html">Problème</a>
-                        <a href="specification.html">Spécifications</a>
+                        <a href="problem.html">Problem</a>
+                        <a href="specification.html">Specifications</a>
                     </div>
                 </li>
             </ul>
@@ -32,85 +32,85 @@
 
     <main>
         <div class="content-section">
-            <h1>Enoncé du problème</h1>
+            <h1>Problem Statement</h1>
 
             <p>
-                Le <strong>problème de Tournées de Véhicules Multi-Produits avec Coût de Changement</strong>
+                The <strong>Multi-Product Vehicle Routing Problem with Changeover Cost</strong>
                 (<em>Multi-Product Multi-Depot Vehicle Routing Problem with Changeover Cost - MPVRP-CC</em>)
-                est un défi d'optimisation logistique complexe. Il vise à organiser la distribution efficace de plusieurs types de produits
-                (par exemple, différents carburants) depuis un ensemble de dépôts vers un réseau de stations-service.
+                is a complex logistics optimization challenge. It aims to organize the efficient distribution of multiple product types
+                (e.g., different fuels) from a set of depots to a network of service stations.
             </p>
 
-            <img src="static/imgs/MPVRP-CO.jpg" alt="Illustration MPVRP-CC" class="img-fluid">
+            <img src="static/imgs/MPVRP-CO.jpg" alt="MPVRP-CC Illustration" class="img-fluid">
 
-            <h2>Contexte et définitions</h2>
+            <h2>Context and Definitions</h2>
 
-            <h3>Notation mathématique</h3>
-            <p>Le problème est modélisé sur les ensembles suivants :</p>
+            <h3>Mathematical Notation</h3>
+            <p>The problem is modeled on the following sets:</p>
             <ul class="math-notation">
-                <li><i>K</i> : Ensemble des camions disponibles, <i>K</i> = {1, ..., <i>K</i>}</li>
-                <li><i>P</i> : Ensemble des produits à distribuer, <i>P</i> = {1, ..., <i>P</i>}</li>
-                <li><i>G</i> : Ensemble des garages (points de départ/arrivée des camions), <i>G</i> = {1, ..., <i>G</i>}</li>
-                <li><i>D</i> : Ensemble des dépôts (points de chargement), <i>D</i> = {1, ..., <i>D</i>}</li>
-                <li><i>S</i> : Ensemble des stations-service (clients), <i>S</i> = {1, ..., <i>S</i>}</li>
+                <li><i>K</i>: Set of available trucks, <i>K</i> = {1, ..., <i>K</i>}</li>
+                <li><i>P</i>: Set of products to distribute, <i>P</i> = {1, ..., <i>P</i>}</li>
+                <li><i>G</i>: Set of garages (truck departure/arrival points), <i>G</i> = {1, ..., <i>G</i>}</li>
+                <li><i>D</i>: Set of depots (loading points), <i>D</i> = {1, ..., <i>D</i>}</li>
+                <li><i>S</i>: Set of service stations (customers), <i>S</i> = {1, ..., <i>S</i>}</li>
             </ul>
 
             <p>
-                Le réseau logistique connecte ces différents sites. Une matrice de distances définit l'éloignement entre chaque paire de localisations.
-                Chaque station-service exprime une demande précise pour chaque type de produit.
-                Pour répondre à cette demande, une flotte hétérogène de camions-citernes est mobilisée. Chaque véhicule possède une capacité de chargement définie
-                et est rattaché à un garage spécifique.
+                The logistics network connects these different sites. A distance matrix defines the separation between each pair of locations.
+                Each service station expresses a specific demand for each product type.
+                To meet this demand, a heterogeneous fleet of tanker trucks is deployed. Each vehicle has a defined loading capacity
+                and is attached to a specific garage.
             </p>
 
-            <h2>Fonctionnement opérationnel</h2>
+            <h2>Operational Framework</h2>
             <p>
-                L'activité des camions suit une structure rigoureuse : <strong>Garage → [Dépôt → Clients]... → Garage</strong>.
+                Truck operations follow a rigorous structure: <strong>Garage → [Depot → Customers]... → Garage</strong>.
             </p>
 
-            <h3>Structure des tournées</h3>
+            <h3>Route Structure</h3>
             <p>
-                Une <strong>tournée complète</strong> commence et se termine obligatoirement au garage d'attache du véhicule.
-                Elle est constituée d'une succession de <strong>mini-tournées</strong>.
+                A <strong>complete route</strong> must start and end at the vehicle's assigned garage.
+                It consists of a succession of <strong>mini-routes</strong>.
             </p>
             <p>
-                Une mini-tournée correspond à un cycle de livraison :
+                A mini-route corresponds to a delivery cycle:
             </p>
             <ul>
-                <li><strong>Chargement :</strong> Le camion se rend dans un dépôt pour charger un (et un seul) type de produit.</li>
-                <li><strong>Livraison :</strong> Il dessert ensuite une ou plusieurs stations-service pour livrer ce produit.</li>
-                <li><strong>Retour :</strong> Une fois vide ou la tournée terminée, il retourne vers un dépôt pour recharger ou rentre à son garage.</li>
+                <li><strong>Loading:</strong> The truck goes to a depot to load one (and only one) product type.</li>
+                <li><strong>Delivery:</strong> It then serves one or more service stations to deliver this product.</li>
+                <li><strong>Return:</strong> Once empty or the route is complete, it returns to a depot to reload or goes back to its garage.</li>
             </ul>
 
-            <h3>Gestion multi-produits</h3>
+            <h3>Multi-Product Management</h3>
             <p>
-                La particularité de ce problème réside dans la gestion des produits :
+                The particularity of this problem lies in product management:
             </p>
             <ul>
-                <li>Un camion ne peut transporter qu'un seul type de produit à la fois (compartiment unique ou dédié).</li>
-                <li>Chaque camion est initialement configuré pour un produit donné.</li>
-                <li><strong>Coût de changement (Changeover Cost) :</strong> Il est possible de changer de produit lors d'un passage au dépôt.
-                    Cependant, cette opération nécessite un nettoyage de la citerne qui engendre un coût spécifique.
-                    L'optimisation doit donc arbitrer entre faire des détours pour garder le même produit ou payer ce coût pour changer de produit sur place.</li>
+                <li>A truck can only transport one product type at a time (single or dedicated compartment).</li>
+                <li>Each truck is initially configured for a given product.</li>
+                <li><strong>Changeover Cost:</strong> It is possible to change products during a visit to the depot.
+                    However, this operation requires tank cleaning which incurs a specific cost.
+                    The optimization must therefore balance between making detours to keep the same product or paying this cost to change products on site.</li>
             </ul>
 
-            <h2>Objectifs et contraintes</h2>
+            <h2>Objectives and Constraints</h2>
 
             <p>
-                L'objectif du MPVRP-CC est de déterminer les itinéraires de l'ensemble de la flotte afin de <strong>minimiser le coût total</strong>, composé de :
+                The objective of MPVRP-CC is to determine the routes for the entire fleet in order to <strong>minimize the total cost</strong>, composed of:
             </p>
             <ul>
-                <li>Du coût de transport (proportionnel à la distance totale parcourue).</li>
-                <li>Du coût total de changement de produit (nettoyage des citernes).</li>
+                <li>Transportation cost (proportional to the total distance traveled).</li>
+                <li>Total product changeover cost (tank cleaning).</li>
             </ul>
 
             <p>
-                Une solution valide doit respecter impérativement les contraintes suivantes :
+                A valid solution must strictly respect the following constraints:
             </p>
             <ul>
-                <li><strong>Satisfaction de la demande :</strong> Toutes les demandes des stations, pour tous les produits, doivent être intégralement livrées.</li>
-                <li><strong>Capacité :</strong> La quantité chargée ne doit jamais excéder la capacité maximale du camion.</li>
-                <li><strong>Flux :</strong> Chaque camion doit finir sa journée à son garage d'origine.</li>
-                <li><strong>Unicité :</strong> Un camion ne dessert pas la même station plusieurs fois pour le même produit au cours d'une même mini-tournée.</li>
+                <li><strong>Demand satisfaction:</strong> All station demands, for all products, must be fully delivered.</li>
+                <li><strong>Capacity:</strong> The loaded quantity must never exceed the truck's maximum capacity.</li>
+                <li><strong>Flow:</strong> Each truck must end its day at its home garage.</li>
+                <li><strong>Uniqueness:</strong> A truck does not serve the same station multiple times for the same product during a single mini-route.</li>
             </ul>
 
             <div class="info-box">
@@ -120,14 +120,14 @@
                     </svg>
                 </div>
                 <p>
-                    <strong>Hypothèses :</strong> On suppose que l'ensemble des dépôts dispose d'un stock capable de satisfaire toutes les demandes et que tous les sites sont accessibles sans contrainte horaire.
+                    <strong>Assumptions:</strong> We assume that all depots have sufficient stock to satisfy all demands and that all sites are accessible without time constraints.
                 </p>
             </div>
         </div>
     </main>
 
     <footer>
-        <p>&copy; 2026 Laboratoire de Recherche en Sciences Informatiques et Applications (LRSIA). Tous droits réservés.</p>
+        <p>&copy; 2026 Laboratory of Research in Computer Science and Applications (LRSIA). All rights reserved.</p>
     </footer>
 
     <script>
