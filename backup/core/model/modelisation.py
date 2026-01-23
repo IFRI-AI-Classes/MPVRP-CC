@@ -5,7 +5,7 @@ import pulp
 from .schemas import Instance
 
 SOLVER_NAME = "PULP_CBC_CMD"
-TIME_LIMIT = 600
+TIME_LIMIT = 100
 EXPORT_TOURS = True
 
 
@@ -361,7 +361,8 @@ class Solver:
         }
 
         if EXPORT_TOURS:
-            self.export_tours()
+            tours = self.extract_tours()
+            print(tours)
 
     def extract_tours(self):
         """Extract tours from the solved model."""
@@ -386,7 +387,7 @@ class Solver:
 if __name__ == "__main__":
     from .utils import parse_instance
 
-    instance = parse_instance("data/instances/small/MPVRP_S_002_s9_d2_p2.dat")
+    instance = parse_instance("backup/data/instances/MPVRP_01_s5_d2_p2.dat")
     solver = Solver(instance)
     solver.solve()
     print(solver.solution)
