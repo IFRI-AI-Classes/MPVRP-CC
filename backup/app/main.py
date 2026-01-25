@@ -23,7 +23,7 @@ app.include_router(generator.router)
 app.include_router(model.router)
 
 
-@app.get("/", tags=["Root"])
+@app.api_route("/", methods=["GET", "HEAD"], tags=["Root"])
 async def root():
     """Point d'entrée de l'API"""
     return {
@@ -36,7 +36,7 @@ async def root():
     }
 
 
-@app.get("/health", tags=["Health"])
+@app.api_route("/health", methods=["GET", "HEAD"], tags=["Health"])
 async def health_check():
     """Vérifie l'état de santé de l'API"""
     return {"status": "healthy"}
