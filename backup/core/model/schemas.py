@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, List, Tuple, Any
 
 
 @dataclass
@@ -40,3 +40,16 @@ class Instance:
     stations: Dict[str, Station]
     costs: Dict[tuple, float]  # (from_id, to_id) -> cost
     distances: Dict[tuple, float]  # (from_id, to_id) -> distance
+
+
+@dataclass(frozen=True)
+class ParsedSolutionVehicle:
+    vehicle_id: int
+    nodes: List[Dict[str, Any]]
+    products: List[Tuple[int, float]]
+
+
+@dataclass(frozen=True)
+class ParsedSolutionDat:
+    vehicles: List[ParsedSolutionVehicle]
+    metrics: Dict[str, Any]
