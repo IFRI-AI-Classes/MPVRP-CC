@@ -212,7 +212,7 @@ def solution_node_key(kind: str, node_id: int) -> str:
     raise ValueError(f"Unknown kind: {kind}")
 
 
-def parse_solution_dat(filepath: str) -> ParsedSolutionDat:
+def parse_solution(filepath: str) -> ParsedSolutionDat:
     """
     Analyser un fichier de solution (.dat) contenant les tournées des véhicules et les métriques.
 
