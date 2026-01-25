@@ -110,40 +110,44 @@ class Solver:
             self.model += pulp.lpSum(
                 self.start[self.g_k[k], d, k]
                 for d in self.D
-            ) == pulp.lpSum(
-                self.used[k, t]
-                for t in self.T
-            ), f"Start_From_Garage_{k}"
+            ) == self.used[k, 1], f"Start_From_Garage_{k}"
 
-        # 3. Chaque véhicule utilisé doit terminer sa tournée complète en revenant à son garage
+        # 3. Justification : Le départ du garage vers un dépôt n’est pas un arc du graphe (les arcs x ne
+        # relient que les nœuds de service V ). Cette contrainte lie donc explicitement le dépôt choisi au
+        # départ (Start) au dépôt effectivement chargé au premier segment (Load à t = 1), garantissant la
+        # cohérence de la solution et du coût cgk d
+        for k in self.K:
+            for d in self.D:
+                self.model += self.start[self.g_k[k], d, k] == pulp.lpSum(
+                    self.load[d, k, 1, p] 
+                    for p in self.P
+                    ), f"StartLoad_{k}_{d}"
+
+        # 4. Chaque véhicule utilisé doit terminer sa tournée complète en revenant à son garage
         # gk depuis une station s ∈ S. Le véhicule ne peut pas terminer directement depuis un dépôt, ce qui
         # force la livraison effective avant le retour au garage.
         for k in self.K:
-            self.model += pulp.lpSum(
+            self.model += ( pulp.lpSum(
                 self.fin[s, self.g_k[k], k, p, t]
                 for s in self.S for p in self.P for t in self.T
-            ) == pulp.lpSum(
-                self.used[k, t]
-                for t in self.T
+            ) == self.used[k, 1]
             ), f"End_At_Garage_{k}"
 
-        # 4. Le flot doit s’équilibrer à chaque station pour chaque mini-tournée t. Le véhicule
+        # 5. Le flot doit s’équilibrer à chaque station pour chaque mini-tournée t. Le véhicule
         # peut soit repartir vers une autre station/dépôt, soit rentrer au garage (F in).
         for k in self.K:
             for s in self.S:
                 for t in self.T:
-                    self.model += pulp.lpSum(
-                        self.x[i, s, k, p, t]
-                        for i in self.V if i != s for p in self.P
-                    ) == pulp.lpSum(
-                        self.x[s, j, k, p, t]
-                        for j in self.V if j != s for p in self.P
-                    ) + pulp.lpSum(
-                        self.fin[s, self.g_k[k], k, p, t]
-                        for p in self.P
-                    ), f"Flow_Balance_Station_{s}_Vehicle_{k}_Tour_{t}"
+                    for p in self.P:
+                        self.model += pulp.lpSum(
+                            self.x[i, s, k, p, t]
+                            for i in self.V if i != s
+                        ) == pulp.lpSum(
+                            self.x[s, j, k, p, t]
+                            for j in self.V if j != s
+                        ) + self.fin[s, self.g_k[k], k, p, t], f"Flow_Balance_Station_{s}_Vehicle_{k}_Tour_{t}_Product_{p}"
 
-        # 5. À la position t (un segment), le véhicule ne peut pas utiliser un dépôt comme
+        # 6. À la position t (un segment), le véhicule ne peut pas utiliser un dépôt comme
         # simple nœud de transit. La contrainte (C5a) impose qu’on part d’un dépôt d si et seulement si on
         # a chargé ce dépôt pour ce segment (Loaddktp = 1). La contrainte (C5b) impose qu’on arrive sur
         # un dépôt uniquement pour terminer le segment (EndDepotdkpt = 1).
@@ -152,15 +156,15 @@ class Solver:
                 for t in self.T:
                     for p in self.P:
                         self.model += pulp.lpSum(
-                            self.x[i, d, k, p, t]
-                            for i in self.V if i != d
-                        ) == self.load[d, k, p, t], f"Depart_From_Depot_{d}_Vehicle_{k}_Tour_{t}_Product_{p}"
-                        self.model += pulp.lpSum(
                             self.x[d, j, k, p, t]
                             for j in self.V if j != d
+                        ) == self.load[d, k, p, t], f"Depart_From_Depot_{d}_Vehicle_{k}_Tour_{t}_Product_{p}"
+                        self.model += pulp.lpSum(
+                            self.x[i, d, k, p, t]
+                            for i in self.V if i != d
                         ) == self.endDepot[d, k, p, t], f"Arrive_At_Depot_{d}_Vehicle_{k}_Tour_{t}_Product_{p}"
 
-        # 6. Si le produit p est actif sur le segment t (P rodktp = 1), alors ce segment doit se
+        # 7. Si le produit p est actif sur le segment t (P rodktp = 1), alors ce segment doit se
         # terminer exactement une fois : soit en revenant à un dépôt (variable EndDepot), soit en revenant
         # au garage depuis une station (variable F in).
         for k in self.K:
@@ -174,23 +178,27 @@ class Solver:
                         for s in self.S
                     ) == self.prod[k, t, p], f"Product_Active_Ending_{k}_Tour_{t}_Product_{p}"
 
-        # 7. Un nouveau segment t + 1 ne peut démarrer que si le segment t s’est terminé sur
+        # 8. Un nouveau segment t + 1 ne peut démarrer que si le segment t s’est terminé sur
         # un dépôt. Le second lien impose que le dépôt de chargement du segment t + 1 est exactement le
         # dépôt où le segment t s’est terminé (rechargement au même dépôt).
         for k in self.K:
             for t in self.T[:-1]:
-                self.model += pulp.lpSum(
-                    self.used[k, t + 1]
-                ) == pulp.lpSum(
+                self.model += self.used[k, t + 1] == pulp.lpSum(
                     self.endDepot[d, k, p, t]
                     for d in self.D for p in self.P
                 ), f"Next_Tour_Starts_After_Ending_{k}_Tour_{t}"
 
                 for d in self.D:
                     for p in self.P:
-                        self.model += self.load[d, k, p, t + 1] == self.endDepot[d, k, p, t], f"Reload_At_Same_Depot_{d}_Vehicle_{k}_Tour_{t+1}_Product_{p}"
+                        self.model += pulp.lpSum(
+                            self.load[d, k, p, t + 1] 
+                            for p in self.P
+                        ) == pulp.lpSum(
+                            self.endDepot[d, k, p, t] 
+                            for p in self.P
+                        ), f"NextDepot_{k}_{t}_{d}_Product_{p}"
 
-        # 8. Un véhicule ne peut visiter une même station qu’une seule fois pour un produit
+        # 9. Un véhicule ne peut visiter une même station qu’une seule fois pour un produit
         # donné, sur toutes les positions.
         for k in self.K:
             for s in self.S:
@@ -199,20 +207,6 @@ class Solver:
                         self.x[i, s, k, p, t]
                         for i in self.V if i != s for t in self.T
                     ) <= 1, f"Single_Visit_Station_{s}_Vehicle_{k}_Product_{p}"
-
-        # 9. Le nombre de départs d’un dépôt d avec un produit p doit correspondre au nombre
-        # de chargements effectués à ce dépôt. Cela établit la cohérence entre les décisions de routage (va-
-        # riable x) et les décisions de chargement (variable Load).
-        for d in self.D:
-            for p in self.P:
-                for k in self.K:
-                    self.model += pulp.lpSum(
-                        self.x[d, j, k, p, t]
-                        for j in self.V if j != d for t in self.T
-                    ) == pulp.lpSum(
-                        self.load[d, k, p, t]
-                        for t in self.T
-                    ), f"Load_Routing_Consistency_Depot_{d}_Vehicle_{k}_Product_{p}"
 
         # 10.Une livraison ne peut avoir lieu que si le véhicule arrive effectivement à la station
         # avec le produit concerné (inflow). Le terme M (Big-M) permet de désactiver la contrainte lorsque
@@ -251,10 +245,10 @@ class Solver:
                     self.model += pulp.lpSum(
                         self.q_load[d, k, p, t]
                         for d in self.D
-                    ) <= pulp.lpSum(
+                    ) == pulp.lpSum(
                         self.deliv[s, p, k, t]
                         for s in self.S
-                    ) + self.M * (1 - self.used[k, t]), f"Mass_Conservation_Vehicle_{k}_Tour_{t}_Product_{p}"
+                    ), f"Mass_Conservation_Vehicle_{k}_Tour_{t}_Product_{p}"
 
         # 13. La variable continue QLoad (quantité chargée) est conditionnée par la variable
         # binaire Load (décision de chargement). Lorsque Loaddktp = 0, la quantité QLoaddktp est forcée à
@@ -297,31 +291,33 @@ class Solver:
         # cycle, cela interdit mathématiquement de boucler sur un ensemble de stations sans repasser par
         # un dépôt.
         for k in self.K:
-            for p in self.P:
                 for t in self.T:
-                    for j in self.V:
-                        delivery_term = self.deliv[j, p, k, t] if j in self.S else 0
+                    for p in self.P:
+                        self.model += (self.q[d, k, p, t] == self.q_load[d, k, p, t] 
+                        ), f"Init_Load_Balance_Depot_{d}_Vehicle_{k}_Tour_{t}_Product_{p}"
 
-                        self.model += pulp.lpSum(
-                            self.q[i, k, p, t]
-                            for i in self.V if i != j
-                        ) - delivery_term == self.q[j, k, p, t] + self.M * (1 - pulp.lpSum(
-                            self.x[i, j, k, p, t]
-                            for i in self.V if i != j
-                        )), f"Load_Balance_Node_{j}_Vehicle_{k}_Tour_{t}_Product_{p}"
+        for i in self.V:
+            for j in self.S:
+                if i == j:
+                    continue
+                for k in self.K:
+                    for t in self.T:
+                        for p in self.P:
+                            self.model += (
+                                self.q[j, k, p, t]
+                                <= self.q[i, k, p, t] - self.deliv[j, p, k, t] + self.M * (1 - self.x[i, j, k, p, t])
+                            ), f"Decrease_Balance_From_{i}_To_{j}_Vehicle_{k}_Tour_{t}_Product_{p}"
 
-        """# 18. Respect de la capacité
-        for k in self.K:
-            for t in self.T:
-                for j in self.V:
-                    self.model += pulp.lpSum(
-                        self.q[j, k, p, t]
-                        for p in self.P
-                    ) <= self.C[k] * pulp.lpSum(
-                        self.x[i, j, k, p, t]
-                        for i in self.V if i != j for p in self.P
-                    ), f"Capacity_Respect_Node_{j}_Vehicle_{k}_Tour_{t}"
-"""
+        # 18. Respect de la capacité
+        for i in self.V:
+            for k in self.K:
+                for t in self.T:
+                    for p in self.P:
+                        self.model += self.q[i, k, p, t] <= self.C[k] * pulp.lpSum(
+                            self.x[i, j, k, p, t] 
+                            for j in self.V if j != i
+                        ), f"Capacity_Respect_Node_{i}_Vehicle_{k}_Tour_{t}_Product_{p}"
+
         # 19. Si la position t est active (U sedkt = 1), exactement un produit doit être chargé
         # à un dépôt pour cette mini-tournée. Cela modélise le fait qu’une citerne ne transporte qu’un seul
         # type de produit par voyage.
@@ -332,20 +328,38 @@ class Solver:
                     for p in self.P
                 ) == self.used[k, t], f"Single_Product_Per_Tour_Vehicle_{k}_Tour_{t}"
 
-        # 20. Pour éliminer les symétries et simplifier le modèle, les positions doivent être
+        # 20. Produit actif identifié par le chargement
+        for k in self.K:
+            for t in self.T:
+                for p in self.P:
+                    self.model += self.prod[k, t, p] == pulp.lpSum(
+                        self.load[d, k, p, t]
+                        for d in self.D
+                    ), f"Prod_{p}_From_Load_{k}_{t}"
+
+        # 21. Pour éliminer les symétries et simplifier le modèle, les positions doivent être
         # utilisées de manière consécutive (1, 2, 3, ...). Une position t + 1 ne peut être active que si la
         # position t l’est également, évitant ainsi les "trous" dans la séquence.
         for k in self.K:
             for t in self.T[:-1]:
                 self.model += self.used[k, t + 1] <= self.used[k, t], f"Consecutive_Tours_Vehicle_{k}_Tour_{t}"
 
-        # 21. Détection du changement de produit
+        # 22. Détection du changement de produit
         for k in self.K:
             for t in self.T:
                 for p1 in self.P:
                     for p2 in self.P:
-                        if p1 != p2:
-                            self.model += self.switch[k, t, p1, p2] >= self.prod[k, t, p1] + self.prod[k, t, p2] - 1, f"Product_Change_Detection_Vehicle_{k}_Tour_{t}_Products_{p1}_{p2}"
+                        if p1 == p2:
+                            continue
+                        if t == 1:
+                            prod_prev = 1 if p1 == self.p_initial[k] else 0
+                            self.model += (
+                                self.switch[k, t, p1, p2] >= prod_prev + self.prod[k, t, p2] - 1
+                            ), f"Product_Change_Detection_Vehicle_{k}_Tour_{t}_Products_{p1}_{p2}"
+                        else:
+                            self.model += (
+                                self.switch[k, t, p1, p2] >= self.prod[k, t-1, p1] + self.prod[k, t, p2] - 1
+                            ), f"Product_Change_Detection_Vehicle_{k}_Tour_{t}_Products_{p1}_{p2}"
 
     def solve(self):
         self.build_model()
@@ -387,7 +401,7 @@ class Solver:
 if __name__ == "__main__":
     from .utils import parse_instance
 
-    instance = parse_instance("backup/data/instances/MPVRP_01_s5_d2_p2.dat")
+    instance = parse_instance("data/instances/MPVRP_01_s5_d2_p2.dat")
     solver = Solver(instance)
     solver.solve()
     print(solver.solution)
