@@ -1,5 +1,8 @@
 import math
 
+from dataclasses import dataclass
+from typing import Dict, List, Tuple, Optional, Any
+
 from .schemas import Camion, Depot, Garage, Station, Instance
 
 
@@ -150,6 +153,129 @@ def compute_distances(instance: Instance) -> dict:
             distances[(from_id, to_id)] = euclidean_distance(locations[from_id], locations[to_id])
 
     return distances
+
+
+@dataclass(frozen=True)
+class ParsedSolutionVehicle:
+    vehicle_id: int
+    nodes: List[Dict[str, Any]]
+    products: List[Tuple[int, float]]
+
+
+@dataclass(frozen=True)
+class ParsedSolutionDat:
+    vehicles: List[ParsedSolutionVehicle]
+    metrics: Dict[str, Any]
+
+
+def _parse_solution_route_token(token: str) -> Dict[str, Any]:
+    """Parse one token from route line: "id", "id [q]", "id (q)"."""
+    token = token.strip()
+    if not token:
+        raise ValueError("Empty token")
+
+    if "[" in token and "]" in token:
+        # depot
+        left, right = token.split("[", 1)
+        node_id = int(left.strip())
+        qty = int(right.split("]", 1)[0].strip())
+        return {"kind": "depot", "id": node_id, "qty": qty}
+
+    if "(" in token and ")" in token:
+        # station
+        left, right = token.split("(", 1)
+        node_id = int(left.strip())
+        qty = int(right.split(")", 1)[0].strip())
+        return {"kind": "station", "id": node_id, "qty": qty}
+
+    # garage (no quantity)
+    return {"kind": "garage", "id": int(token), "qty": 0}
+
+
+def _parse_solution_product_token(token: str) -> Tuple[int, float]:
+    """Parse one token from product line: "p(cost)"."""
+    token = token.strip()
+    if not token:
+        raise ValueError("Empty token")
+    if "(" not in token or ")" not in token:
+        raise ValueError(f"Invalid product token: {token}")
+    p_str, rest = token.split("(", 1)
+    product = int(p_str.strip())
+    cost = float(rest.split(")", 1)[0].strip())
+    return product, cost
+
+
+def solution_node_key(kind: str, node_id: int) -> str:
+    if kind == "garage":
+        return f"G{node_id}"
+    if kind == "depot":
+        return f"D{node_id}"
+    if kind == "station":
+        return f"S{node_id}"
+    raise ValueError(f"Unknown kind: {kind}")
+
+
+def parse_solution_dat(filepath: str) -> ParsedSolutionDat:
+    """Parse a solution file following data/solutions/README.md format."""
+    with open(filepath, "r") as f:
+        raw_lines = [line.rstrip("\n") for line in f]
+
+    # Keep blank lines to split vehicle blocks; trim trailing empty lines
+    while raw_lines and not raw_lines[-1].strip():
+        raw_lines.pop()
+
+    vehicles: List[ParsedSolutionVehicle] = []
+    i = 0
+
+    def _is_vehicle_line(line: str) -> bool:
+        return ":" in line
+
+    # Parse vehicle blocks: two lines with same prefix "k:"
+    while i < len(raw_lines) and raw_lines[i].strip() and _is_vehicle_line(raw_lines[i]):
+        line1 = raw_lines[i].strip()
+        if i + 1 >= len(raw_lines):
+            raise ValueError("Unexpected EOF while reading vehicle block")
+        line2 = raw_lines[i + 1].strip()
+
+        if ":" not in line1 or ":" not in line2:
+            raise ValueError("Vehicle block must have two prefixed lines")
+
+        v1, route_part = line1.split(":", 1)
+        v2, prod_part = line2.split(":", 1)
+        vehicle_id = int(v1.strip())
+        if int(v2.strip()) != vehicle_id:
+            raise ValueError(f"Mismatched vehicle ids: {v1} vs {v2}")
+
+        route_tokens = [t.strip() for t in route_part.split("-")]
+        route_tokens = [t for t in route_tokens if t]
+        nodes = [_parse_solution_route_token(t) for t in route_tokens]
+
+        prod_tokens = [t.strip() for t in prod_part.split("-")]
+        prod_tokens = [t for t in prod_tokens if t]
+        products = [_parse_solution_product_token(t) for t in prod_tokens]
+
+        vehicles.append(ParsedSolutionVehicle(vehicle_id=vehicle_id, nodes=nodes, products=products))
+
+        i += 2
+        # optional blank separator line
+        while i < len(raw_lines) and not raw_lines[i].strip():
+            i += 1
+
+    # Remaining non-empty lines are metrics (6 lines)
+    metrics_lines = [l.strip() for l in raw_lines[i:] if l.strip()]
+    if len(metrics_lines) != 6:
+        raise ValueError(f"Expected 6 metric lines, got {len(metrics_lines)}")
+
+    metrics = {
+        "used_vehicles": int(metrics_lines[0]),
+        "total_changes": int(metrics_lines[1]),
+        "total_switch_cost": float(metrics_lines[2]),
+        "distance_total": float(metrics_lines[3]),
+        "processor": metrics_lines[4],
+        "time": float(metrics_lines[5]),
+    }
+
+    return ParsedSolutionDat(vehicles=vehicles, metrics=metrics)
 
 
 if __name__ == "__main__":

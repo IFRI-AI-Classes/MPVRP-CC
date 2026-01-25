@@ -33,9 +33,19 @@ class Solver:
         self.g_k = {c.id : c.garage_id for c in instance.camions.values()}
         self.p_initial = {c.id : c.initial_product for c in instance.camions.values()}
 
-        self.demand = {(s.id, p): s.demand.get(p, 0) for s in instance.stations.values() for p in self.P}
-        self.stock = {(d.id, p): d.stocks.get(p, 0) for d in instance.depots.values() for p in self.P}
-        self.costs = instance.costs
+        # IMPORTANT: dans `utils.parse_instance`, les clés produits des demandes/stocks sont 0..(P-1)
+        # alors que le modèle utilise 1..P. On décale donc de +1 ici pour rester cohérent.
+        self.demand = {
+            (s.id, p_idx + 1): qty
+            for s in instance.stations.values()
+            for p_idx, qty in s.demand.items()
+        }
+        self.stock = {
+            (d.id, p_idx + 1): qty
+            for d in instance.depots.values()
+            for p_idx, qty in d.stocks.items()
+        }
+        self.costs = {(i + 1, j + 1): cost for (i, j), cost in instance.costs.items()}
         self.distances = instance.distances
 
         self.M = 1e6  # Grande constante pour les contraintes Big-M
@@ -81,12 +91,12 @@ class Solver:
         )
 
         start_cost = pulp.lpSum(
-            self.distances.get((f"G{self.g_k[k]}", d), 0.0) * self.start[self.g_k[k], d, k]
+            self.distances.get((self.g_k[k], d), 0.0) * self.start[self.g_k[k], d, k]
             for d in self.D for k in self.K
         )
 
         end_cost = pulp.lpSum(
-            self.distances.get((s, f"G{self.g_k[k]}"), 0.0) * self.fin[s, self.g_k[k], k, p, t]
+            self.distances.get((s, self.g_k[k]), 0.0) * self.fin[s, self.g_k[k], k, p, t]
             for s in self.S for k in self.K for p in self.P for t in self.T
         )
 
@@ -119,7 +129,7 @@ class Solver:
         for k in self.K:
             for d in self.D:
                 self.model += self.start[self.g_k[k], d, k] == pulp.lpSum(
-                    self.load[d, k, 1, p] 
+                    self.load[d, k, p, 1]
                     for p in self.P
                     ), f"StartLoad_{k}_{d}"
 
@@ -318,7 +328,8 @@ class Solver:
                             for j in self.V if j != i
                         ), f"Capacity_Respect_Node_{i}_Vehicle_{k}_Tour_{t}_Product_{p}"
 
-        # 19. Si la position t est active (U sedkt = 1), exactement un produit doit être chargé
+        # 19
+        # . Si la position t est active (U sedkt = 1), exactement un produit doit être chargé
         # à un dépôt pour cette mini-tournée. Cela modélise le fait qu’une citerne ne transporte qu’un seul
         # type de produit par voyage.
         for k in self.K:
@@ -379,29 +390,202 @@ class Solver:
             print(tours)
 
     def extract_tours(self):
-        """Extract tours from the solved model."""
+        """Extract ordered tours from the solved model."""
+
+        def _val(var) -> float:
+            v = pulp.value(var)
+            return 0.0 if v is None else float(v)
+
         tours = {}
         for k in self.K:
             tours[k] = []
+
             for t in self.T:
-                tour = []
+                if _val(self.used[k, t]) < 0.5:
+                    continue
+
+                active_p = next((p for p in self.P if _val(self.prod[k, t, p]) > 0.5), None)
+                if active_p is None:
+                    continue
+
+                start_depot = next((d for d in self.D if _val(self.load[d, k, active_p, t]) > 0.5), None)
+                if start_depot is None:
+                    continue
+
+                succ = {}
                 for i in self.V:
                     for j in self.V:
-                        for p in self.P:
-                            if i != j and pulp.value(self.x[i, j, k, p, t]) > 0.5:
-                                tour.append((i, j, p))
-                if tour:
-                    tours[k].append({
-                        "tour_number": t,
-                        "segments": tour
-                    })
+                        if i == j:
+                            continue
+                        if _val(self.x[i, j, k, active_p, t]) > 0.5:
+                            succ[i] = j
+
+                ordered_segments = []
+                curr = start_depot
+                visited = {curr}
+                while curr in succ:
+                    nxt = succ[curr]
+                    ordered_segments.append((curr, nxt, active_p))
+                    curr = nxt
+
+                    # fin de mini-tournée quand on revient sur un dépôt
+                    if curr in self.D:
+                        break
+
+                    # sécurité anti-boucle
+                    if curr in visited:
+                        break
+                    visited.add(curr)
+
+                tours[k].append({
+                    "tour_number": t,
+                    "product": active_p,
+                    "start_depot": start_depot,
+                    "segments": ordered_segments,
+                })
+
         return tours
+
+    def export_solution(self, filepath):
+        """Exporte la solution au format .dat spécifié."""
+        if not self.solution or self.solution.get("status") not in ["Optimal", "Feasible"]:
+            print("Pas de solution valide à exporter.")
+            return
+
+        def _val(var) -> float:
+            v = pulp.value(var)
+            return 0.0 if v is None else float(v)
+
+        # 1. Mappage des IDs pour l'export. Les IDs sont relatifs à leur type (G1, D1, S1 gardent l'ID 1)
+        mapping = {}
+        for g in self.G: mapping[g] = int(g[1:])
+        for d in self.D: mapping[d] = int(d[1:])
+        for s in self.S: mapping[s] = int(s[1:])
+
+        output_lines = []
+        total_changes = 0
+        total_switch_cost = 0.0
+        used_vehicles = 0
+        dist_total = 0.0
+
+        # --- Calcul de la distance totale (Routing + Start + End) ---
+        for k in self.K:
+            for d in self.D:
+                if pulp.value(self.start[self.g_k[k], d, k]) > 0.5:
+                    dist_total += self.distances.get((self.g_k[k], d), 0.0)
+            for t in self.T:
+                for p in self.P:
+                    for i in self.V:
+                        for j in self.V:
+                            if i != j and pulp.value(self.x[i, j, k, p, t]) > 0.5:
+                                dist_total += self.distances.get((i, j), 0.0)
+                    for s in self.S:
+                        if pulp.value(self.fin[s, self.g_k[k], k, p, t]) > 0.5:
+                            dist_total += self.distances.get((s, self.g_k[k]), 0.0)
+
+        # --- Reconstruction des routes (format README) ---
+        tours_by_k = self.extract_tours()
+        for k in self.K:
+            k_tours = sorted(tours_by_k.get(k, []), key=lambda d: d["tour_number"])
+            if not k_tours:
+                continue
+
+            used_vehicles += 1
+            current_cumul_cost = 0.0
+            garage_str = self.g_k[k]
+            vehicle_id = int(k[1:]) if isinstance(k, str) and k.startswith("K") else k
+
+            line1_parts = []
+            line2_parts = []
+
+            # garage de départ
+            line1_parts.append(f"{mapping.get(garage_str, 0)}")
+            # On aligne la ligne produit sur le produit de la 1ère mini-tournée (format README)
+            first_tour_product_export = (k_tours[0]["product"] - 1) if k_tours else self.p_initial[k]
+            line2_parts.append(f"{first_tour_product_export}({current_cumul_cost:.1f})")
+
+            last_product_export = first_tour_product_export
+            last_station = None
+            last_t = None
+
+            for tour in k_tours:
+                t = tour["tour_number"]
+                active_p = tour["product"]
+                p_export = active_p - 1  # export 0-based
+
+                # coût de switch au dépôt (cumulatif)
+                cost_switch = 0.0
+                for p1 in self.P:
+                    for p2 in self.P:
+                        if p1 == p2:
+                            continue
+                        if _val(self.switch[k, t, p1, p2]) > 0.5:
+                            cost_switch += self.costs.get((p1, p2), 0.0)
+                            total_changes += 1
+                current_cumul_cost += cost_switch
+                total_switch_cost += cost_switch
+
+                # dépôt de chargement de cette mini-tournée
+                depot = tour.get("start_depot")
+                if depot is None:
+                    continue
+                q_loaded = _val(self.q_load[depot, k, active_p, t])
+                line1_parts.append(f"{mapping.get(depot, 0)} [{int(q_loaded)}]")
+                line2_parts.append(f"{p_export}({current_cumul_cost:.1f})")
+
+                # stations visitées (dans l'ordre)
+                for (_i, j, _p) in tour.get("segments", []):
+                    if j in self.S:
+                        qty = _val(self.deliv[j, active_p, k, t])
+                        line1_parts.append(f"{mapping.get(j, 0)} ({int(qty)})")
+                        line2_parts.append(f"{p_export}({current_cumul_cost:.1f})")
+                        last_station = j
+                last_product_export = p_export
+                last_t = t
+
+            # garage de fin (sans quantité)
+            if last_station is not None and last_t is not None:
+                # si la fin est bien activée sur la dernière station, on ferme la route
+                if any(_val(self.fin[last_station, garage_str, k, p, last_t]) > 0.5 for p in self.P):
+                    line1_parts.append(f"{mapping.get(garage_str, 0)}")
+                    line2_parts.append(f"{last_product_export}({current_cumul_cost:.1f})")
+                else:
+                    # fallback: on ferme quand même pour rester lisible/exportable
+                    line1_parts.append(f"{mapping.get(garage_str, 0)}")
+                    line2_parts.append(f"{last_product_export}({current_cumul_cost:.1f})")
+            else:
+                # aucun segment -> juste retour au garage
+                line1_parts.append(f"{mapping.get(garage_str, 0)}")
+                line2_parts.append(f"{last_product_export}({current_cumul_cost:.1f})")
+
+            output_lines.append(f"{vehicle_id}: " + " - ".join(line1_parts))
+            output_lines.append(f"{vehicle_id}: " + " - ".join(line2_parts))
+            output_lines.append("")
+
+        output_lines.append(f"{used_vehicles}")
+        output_lines.append(f"{total_changes}")
+        output_lines.append(f"{total_switch_cost:.2f}")
+        output_lines.append(f"{dist_total:.2f}")
+        import platform
+        output_lines.append(f"{platform.processor()}")
+        output_lines.append(f"{self.solution['time_taken']:.3f}")
+        
+        try:
+            with open(filepath, "w") as f:
+                f.write("\n".join(output_lines))
+            print(f"Solution exportée avec succès : {filepath}")
+        except Exception as e:
+            print(f"Erreur lors de l'export : {e}")
 
 
 if __name__ == "__main__":
     from .utils import parse_instance
 
-    instance = parse_instance("data/instances/MPVRP_01_s5_d2_p2.dat")
+    instance_path = "data/instances/MPVRP_01_s5_d2_p2.dat"
+    solution_path = "data/solutions/Sol_MPVRP_01_s5_d2_p2.dat"
+    
+    instance = parse_instance(instance_path)
     solver = Solver(instance)
     solver.solve()
     print(solver.solution)
+    solver.export_solution(solution_path)
