@@ -1,26 +1,17 @@
 import math
 
-from .schemas import Camion, Depot, Garage, Station, Instance, ParsedSolutionDat, ParsedSolutionVehicle
 from typing import Dict, List, Tuple, Any
 
+from .schemas import Camion, Depot, Garage, Station, Instance, ParsedSolutionDat, ParsedSolutionVehicle
+
+
 def euclidean_distance(point1: tuple, point2: tuple) -> float:
+    """Calculer la distance euclidienne entre deux points 2D."""
     return math.sqrt((point1[0] - point2[0]) ** 2 + (point1[1] - point2[1]) ** 2)
 
 
 def parse_instance(filepath: str) -> Instance:
-    """
-    Extraire les données du fichier .dat et les organiser dans une instance de la classe Instance.
-    
-    Parameters
-    ----------
-    filepath: str
-        Chemin vers le fichier .dat contenant les données de l'instance.
-
-    Returns
-    -------
-    Instance
-        Une instance de la classe Instance contenant toutes les données extraites.
-    """""
+    """Extraire les données du fichier .dat et les organiser dans une instance de la classe Instance."""
     try:
         # Extraire toutes les lignes du fichier
         with open(filepath, 'r') as file:
@@ -32,7 +23,9 @@ def parse_instance(filepath: str) -> Instance:
         # 2ème ligne: Nombre de produits, depôts, garages, stations, camions
         num_products, num_depots, num_garages, num_stations, num_camions = map(int, lines[1].split())
 
-        # num_products lignes suivantes: Matrice des coûts de transition de produits taille NbProduits × NbProduits
+        # num_products lignes suivantes : Matrice des coûts de transition de produits
+        # Dimension : NbProduits × NbProduits
+        # Représente le coût de changement du produit i vers le produit j
         costs = {}
         cost_start_line = 2
         for i in range(num_products):
@@ -101,6 +94,7 @@ def parse_instance(filepath: str) -> Instance:
             distances={}
         )
 
+        # Calculer et ajouter les distances euclidiennes entre tous les nœuds du réseau
         distances = compute_distances(instance)
         instance.distances = distances
 
@@ -112,19 +106,13 @@ def parse_instance(filepath: str) -> Instance:
     except Exception as e:
         raise RuntimeError(f"Une erreur est survenue lors de l'analyse du fichier {filepath}: {e}")
 
+
 def compute_distances(instance: Instance) -> dict:
     """
     Calculer les distances euclidiennes entre tous les points (dépôts, garages, stations) de l'instance.
 
-    Parameters
-    ----------
-    instance: Instance
-        Une instance de la classe Instance contenant les données.
-
-    Returns
-    -------
-    dict
-        Un dictionnaire avec les distances entre chaque paire de points.
+    Retourne un dictionnaire avec les clés (id_noeud_i, id_noeud_j) et les valeurs = distance euclidienne.
+    Cette matrice de distances est utilisée pour calculer les coûts de déplacement dans le modèle.
     """
     locations = {}
 
@@ -140,6 +128,8 @@ def compute_distances(instance: Instance) -> dict:
     for station in instance.stations.values():
         locations[station.id] = station.location
 
+    # Calculer les distances euclidiennes entre tous les points
+    # Complexité : O(n²) où n = nombre total de nœuds (dépôts + garages + stations)
     distances = {}
     ids = list(locations.keys())
     for i in range(len(ids)):
@@ -152,31 +142,47 @@ def compute_distances(instance: Instance) -> dict:
 
 
 def _parse_solution_route_token(token: str) -> Dict[str, Any]:
-    """Parse one token from route line: "id", "id [q]", "id (q)"."""
+    """
+    Traiter un token de la ligne de route dans un fichier de solution.
+
+    Formats supportés :
+    - "id[qty]" : Dépôt avec quantité chargée (ex: "1[500]")
+    - "id(qty)" : Station avec quantité livrée (ex: "5(300)")
+    - "id"      : Garage sans quantité (ex: "2")
+
+    Retourne un dictionnaire avec kind (depot/station/garage), id (int), qty (float).
+    """
     token = token.strip()
     if not token:
         raise ValueError("Empty token")
 
     if "[" in token and "]" in token:
-        # depot
+        # Dépôt : format id[qty]
         left, right = token.split("[", 1)
         node_id = int(left.strip())
         qty = int(right.split("]", 1)[0].strip())
         return {"kind": "depot", "id": node_id, "qty": qty}
 
     if "(" in token and ")" in token:
-        # station
+        # Station : format id(qty)
         left, right = token.split("(", 1)
         node_id = int(left.strip())
         qty = int(right.split(")", 1)[0].strip())
         return {"kind": "station", "id": node_id, "qty": qty}
 
-    # garage (no quantity)
+    # Garage : format id (pas de quantité)
     return {"kind": "garage", "id": int(token), "qty": 0}
 
 
 def _parse_solution_product_token(token: str) -> Tuple[int, float]:
-    """Parse one token from product line: "p(cost)"."""
+    """
+    Analyser un token de la ligne de produits dans un fichier de solution.
+
+    Format : "p(cost)" où p est l'ID du produit et cost est le coût cumulé.
+    Exemple : "2(150.5)" signifie produit 2 avec un coût cumulé de 150.5
+
+    Retourne : (product_id, cumulative_cost)
+    """
     token = token.strip()
     if not token:
         raise ValueError("Empty token")
@@ -189,6 +195,14 @@ def _parse_solution_product_token(token: str) -> Tuple[int, float]:
 
 
 def solution_node_key(kind: str, node_id: int) -> str:
+    """
+    Convertir un type de nœud et un ID numérique en clé de nœud formatée.
+
+    Exemples :
+    - ("garage", 1) -> "G1"
+    - ("depot", 3) -> "D3"
+    - ("station", 5) -> "S5"
+    """
     if kind == "garage":
         return f"G{node_id}"
     if kind == "depot":
@@ -199,11 +213,31 @@ def solution_node_key(kind: str, node_id: int) -> str:
 
 
 def parse_solution_dat(filepath: str) -> ParsedSolutionDat:
-    """Parse a solution file following data/solutions/README.md format."""
+    """
+    Analyser un fichier de solution (.dat) contenant les tournées des véhicules et les métriques.
+
+    Structure du fichier de solution :
+
+    - Blocs de véhicules (2 lignes par véhicule) :
+
+      * Ligne 1 : "k: noeud1 - noeud2 - ... - noeudN"
+      * Ligne 2 : "k: produit1(coût) - produit2(coût) - ... - produitN(coût)"
+
+    - 6 lignes de métriques finales :
+
+      * Nombre de véhicules utilisés
+      * Nombre total de changements de produits
+      * Coût total des changements
+      * Distance totale parcourue
+      * Processeur utilisé
+      * Temps d'exécution
+
+    Retourne un objet ParsedSolutionDat avec les tournées et les métriques.
+    """
     with open(filepath, "r") as f:
         raw_lines = [line.rstrip("\n") for line in f]
 
-    # Keep blank lines to split vehicle blocks; trim trailing empty lines
+    # Conserver les lignes vides pour séparer les blocs de véhicules ; supprimer les lignes vides finales
     while raw_lines and not raw_lines[-1].strip():
         raw_lines.pop()
 
@@ -213,7 +247,7 @@ def parse_solution_dat(filepath: str) -> ParsedSolutionDat:
     def _is_vehicle_line(line: str) -> bool:
         return ":" in line
 
-    # Parse vehicle blocks: two lines with same prefix "k:"
+    # Analyser les blocs de véhicules : deux lignes avec le même préfixe "k:"
     while i < len(raw_lines) and raw_lines[i].strip() and _is_vehicle_line(raw_lines[i]):
         line1 = raw_lines[i].strip()
         if i + 1 >= len(raw_lines):
@@ -223,16 +257,19 @@ def parse_solution_dat(filepath: str) -> ParsedSolutionDat:
         if ":" not in line1 or ":" not in line2:
             raise ValueError("Vehicle block must have two prefixed lines")
 
+        # Extraire l'ID du véhicule et les données de route/produits
         v1, route_part = line1.split(":", 1)
         v2, prod_part = line2.split(":", 1)
         vehicle_id = int(v1.strip())
         if int(v2.strip()) != vehicle_id:
             raise ValueError(f"Mismatched vehicle ids: {v1} vs {v2}")
 
+        # Analyser la séquence de nœuds visités (route)
         route_tokens = [t.strip() for t in route_part.split("-")]
         route_tokens = [t for t in route_tokens if t]
         nodes = [_parse_solution_route_token(t) for t in route_tokens]
 
+        # Analyser la séquence de produits transportés avec coûts cumulés
         prod_tokens = [t.strip() for t in prod_part.split("-")]
         prod_tokens = [t for t in prod_tokens if t]
         products = [_parse_solution_product_token(t) for t in prod_tokens]
@@ -240,11 +277,11 @@ def parse_solution_dat(filepath: str) -> ParsedSolutionDat:
         vehicles.append(ParsedSolutionVehicle(vehicle_id=vehicle_id, nodes=nodes, products=products))
 
         i += 2
-        # optional blank separator line
+        # Ligne de séparation optionnelle entre les blocs de véhicules
         while i < len(raw_lines) and not raw_lines[i].strip():
             i += 1
 
-    # Remaining non-empty lines are metrics (6 lines)
+    # Les lignes non vides restantes contiennent les métriques (6 lignes)
     metrics_lines = [l.strip() for l in raw_lines[i:] if l.strip()]
     if len(metrics_lines) != 6:
         raise ValueError(f"Expected 6 metric lines, got {len(metrics_lines)}")
@@ -259,11 +296,3 @@ def parse_solution_dat(filepath: str) -> ParsedSolutionDat:
     }
 
     return ParsedSolutionDat(vehicles=vehicles, metrics=metrics)
-
-
-if __name__ == "__main__":
-    # Exemple d'utilisation
-    instance = parse_instance("/home/rosas/Documents/IFRI/Labo/MPVRP-CC/data/instances/medium/MPVRP_M_006_s50_d3_p6.dat")
-    # recuperer l'ID des camions
-    for camion_id in instance.camions.values():
-        print(f"Camion ID: {camion_id.id}")

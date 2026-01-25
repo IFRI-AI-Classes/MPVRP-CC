@@ -483,7 +483,7 @@ class Solver:
                         if pulp.value(self.fin[s, self.g_k[k], k, p, t]) > 0.5:
                             dist_total += self.distances.get((s, self.g_k[k]), 0.0)
 
-        # --- Reconstruction des routes (format README) ---
+        # --- Reconstruction des routes ---
         tours_by_k = self.extract_tours()
         for k in self.K:
             k_tours = sorted(tours_by_k.get(k, []), key=lambda d: d["tour_number"])

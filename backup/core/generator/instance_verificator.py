@@ -1,7 +1,8 @@
-import numpy as np
 import os
 import sys
 import re
+
+import numpy as np
 
 class InstanceVerificator:
     def __init__(self, filepath):

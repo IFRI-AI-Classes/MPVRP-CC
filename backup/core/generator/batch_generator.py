@@ -1,33 +1,11 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Batch Generator - Générateur automatique d'instances MPVRP-CC par catégorie
-
-Ce script génère automatiquement 150 instances réparties en 3 catégories :
-- 50 instances Small
-- 50 instances Medium  
-- 50 instances Large
-
-Chaque catégorie a ses propres plages de paramètres définies.
-Les instances sont sauvegardées dans des sous-dossiers dédiés.
-
-Usage:
-    python batch_generator.py                    # Génère toutes les catégories (150 instances)
-    python batch_generator.py --category small   # Génère uniquement les instances Small
-    python batch_generator.py --count 10         # Génère 10 instances par catégorie
-    python batch_generator.py --seed 42          # Avec graine pour reproductibilité
-"""
-
 import os
 import sys
 import random
 import argparse
 from datetime import datetime
 
-# Ajouter le chemin pour importer instance_provider et instance_verificator
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from instance_provider import generer_instance
-from instance_verificator import InstanceVerificator
+from .instance_provider import generer_instance
+from .instance_verificator import InstanceVerificator
 
 
 # =============================================================================
