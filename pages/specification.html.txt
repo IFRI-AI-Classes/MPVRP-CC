@@ -22,7 +22,7 @@
                 <li class="dropdown">
                     <a href="#" class="dropbtn">Documentation ▾</a>
                     <div class="dropdown-content">
-                        <a href="problem.html">Problem</a>
+                        <a href="problem.html.txt">Problem</a>
                         <a href="specification.html">Specifications</a>
                     </div>
                 </li>
