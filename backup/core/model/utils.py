@@ -1,10 +1,7 @@
 import math
 
-from dataclasses import dataclass
-from typing import Dict, List, Tuple, Optional, Any
-
-from .schemas import Camion, Depot, Garage, Station, Instance
-
+from .schemas import Camion, Depot, Garage, Station, Instance, ParsedSolutionDat, ParsedSolutionVehicle
+from typing import Dict, List, Tuple, Any
 
 def euclidean_distance(point1: tuple, point2: tuple) -> float:
     return math.sqrt((point1[0] - point2[0]) ** 2 + (point1[1] - point2[1]) ** 2)
@@ -115,7 +112,6 @@ def parse_instance(filepath: str) -> Instance:
     except Exception as e:
         raise RuntimeError(f"Une erreur est survenue lors de l'analyse du fichier {filepath}: {e}")
 
-
 def compute_distances(instance: Instance) -> dict:
     """
     Calculer les distances euclidiennes entre tous les points (dépôts, garages, stations) de l'instance.
@@ -153,19 +149,6 @@ def compute_distances(instance: Instance) -> dict:
             distances[(from_id, to_id)] = euclidean_distance(locations[from_id], locations[to_id])
 
     return distances
-
-
-@dataclass(frozen=True)
-class ParsedSolutionVehicle:
-    vehicle_id: int
-    nodes: List[Dict[str, Any]]
-    products: List[Tuple[int, float]]
-
-
-@dataclass(frozen=True)
-class ParsedSolutionDat:
-    vehicles: List[ParsedSolutionVehicle]
-    metrics: Dict[str, Any]
 
 
 def _parse_solution_route_token(token: str) -> Dict[str, Any]:

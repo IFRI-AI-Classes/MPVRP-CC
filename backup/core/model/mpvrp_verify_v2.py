@@ -7,17 +7,15 @@ Non-conformités corrigées par rapport à l'ancien vérificateur:
 
 from __future__ import annotations
 
-import argparse
-
 from typing import Any, Dict, List, Tuple
 
 from .utils import (
     parse_instance,
     parse_solution_dat,
-    solution_node_key,
-    ParsedSolutionDat,
+    solution_node_key
 )
 
+from .schemas import ParsedSolutionDat
 
 def verify_solution_dat(instance, solution: ParsedSolutionDat) -> Tuple[List[str], Dict[str, Any]]:
     """Vérifie une solution `.dat` (format README) par rapport à l'instance.
@@ -160,45 +158,19 @@ def verify_solution_dat(instance, solution: ParsedSolutionDat) -> Tuple[List[str
 
     return errors, computed
 
-
-def main(instance_path: str, solution_path: str) -> int:
+if __name__ == "__main__":
+    instance_path = "data/instances/MPVRP_01_s5_d2_p2.dat"
+    solution_path = "data/solutions/Sol_MPVRP_01_s5_d2_p2.dat"
     instance = parse_instance(instance_path)
     solution = parse_solution_dat(solution_path)
     errors, computed = verify_solution_dat(instance, solution)
-
-    print("=" * 60)
-    print("VÉRIFICATION SOLUTION (.dat)")
-    print("=" * 60)
-    print(f"Instance: {instance_path}")
-    print(f"Solution: {solution_path}")
-    print("")
-    print("Métriques fichier:")
-    print(f"  used_vehicles:     {solution.metrics['used_vehicles']}")
-    print(f"  total_changes:     {solution.metrics['total_changes']}")
-    print(f"  total_switch_cost: {solution.metrics['total_switch_cost']}")
-    print(f"  distance_total:    {solution.metrics['distance_total']}")
-    print("")
-    print("Métriques recalculées:")
-    print(f"  used_vehicles:     {computed['used_vehicles']}")
-    print(f"  total_changes:     {computed['total_changes']}")
-    print(f"  total_switch_cost: {computed['total_switch_cost']:.2f}")
-    print(f"  distance_total:    {computed['distance_total']:.2f}")
-
     if errors:
         print("")
         print(f"❌ SOLUTION NON VALIDE ({len(errors)} erreur(s))")
         for e in errors:
             print(f"- {e}")
-        return 1
+        
+    else:
+        print("")
+        print("✅ SOLUTION VALIDE ET CONFORME")
 
-    print("")
-    print("✅ SOLUTION VALIDE ET CONFORME")
-    return 0
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Vérifie une solution MPVRP-CC au format README (.dat).")
-    parser.add_argument("--instance", default="data/instances/MPVRP_01_s5_d2_p2.dat")
-    parser.add_argument("--solution", default="data/solutions/Sol_MPVRP_01_s5_d2_p2.dat")
-    args = parser.parse_args()
-    raise SystemExit(main(args.instance, args.solution))
