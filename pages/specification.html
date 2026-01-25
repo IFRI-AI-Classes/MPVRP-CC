@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,12 +18,12 @@
             </div>
 
             <ul class="nav-links">
-                <li><a href="../index.html">Accueil</a></li>
+                <li><a href="../index.html">Home</a></li>
                 <li class="dropdown">
                     <a href="#" class="dropbtn">Documentation ▾</a>
                     <div class="dropdown-content">
-                        <a href="problem.html">Problème</a>
-                        <a href="specification.html">Spécifications</a>
+                        <a href="problem.html">Problem</a>
+                        <a href="specification.html">Specifications</a>
                     </div>
                 </li>
             </ul>
@@ -32,142 +32,163 @@
 
     <main>
         <div class="content-section">
-          <h1>Spécifications techniques</h1>
+          <h1>Technical Specifications</h1>
 
           <div class="info-box">
               <svg class="info-box-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
               <p>
-                  Cette page détaille les formats de fichiers utilisés pour les instances et les solutions du problème.
-                  Ces spécifications sont essentielles pour garantir l'interopérabilité entre le générateur d'instances, les solveurs et les outils de vérification.
+                  This page details the file formats used for problem instances and solutions.
+                  These specifications are essential to ensure interoperability between the instance generator, solvers, and verification tools.
               </p>
           </div>
 
-          <!-- Section Format des Instances -->
-          <h2>📁 Format des instances</h2>
+          <h2>Download Instances</h2>
           <p>
-              Les instances sont stockées dans des fichiers texte portant l'extension <code>.dat</code>.
+              You can download test instances via the following Google Drive links:
+          </p>
+
+          <div style="display: flex; gap: 15px; flex-wrap: wrap; margin: 20px 0;">
+              <a href="https://drive.google.com/drive/folders/1iIP8MPY2Gy4_W3Vd43ccRy9pVE37FJ4E?usp=sharing" target="_blank" style="display: inline-block; padding: 12px 24px; background: #4285f4; color: white; text-decoration: none; border-radius: 5px; font-weight: 500;">
+                  Small instances
+              </a>
+              <a href="https://drive.google.com/drive/folders/1mr9ti2bSvSR8grdNXE6j-BBR3V9r9_BL?usp=sharing" target="_blank" style="display: inline-block; padding: 12px 24px; background: #4285f4; color: white; text-decoration: none; border-radius: 5px; font-weight: 500;">
+                  Medium instances
+              </a>
+              <a href="https://drive.google.com/drive/folders/15RnViWMvHTVaE6_-poc9R38ETVXO02Z-?usp=sharing" target="_blank" style="display: inline-block; padding: 12px 24px; background: #4285f4; color: white; text-decoration: none; border-radius: 5px; font-weight: 500;">
+                  Large instances
+              </a>
+          </div>
+
+          <!-- Section Format des Instances -->
+          <h2>📁 Instance Format</h2>
+          <p>
+              Instances are stored in text files with the <code>.dat</code> extension.
           </p>
 
           <div class="spec-card">
-              <h4>Convention de nommage</h4>
-              <p>Le nom du fichier encode les caractéristiques principales de l'instance :</p>
-              <p><code>MPVRP_A_sB_dC_pD.dat</code></p>
+              <h4>Naming Convention</h4>
+              <p>The filename encodes the main characteristics of the instance:</p>
+              <p><code>MPVRP_A_B_sC_dD_pE.dat</code></p>
           </div>
 
           <div class="spec-grid">
               <div class="spec-item">
-                  <h5><span class="spec-badge">A</span> Identifiant</h5>
-                  <p>Numéro unique de l'instance (ex: 01, 02)</p>
+                  <h5><span class="spec-badge">A</span> Category</h5>
+                    <p>Instance type: L for large, M for medium, and S for small</p>
               </div>
               <div class="spec-item">
-                  <h5><span class="spec-badge">B</span> Stations</h5>
-                  <p>Nombre de clients à livrer</p>
+                  <h5><span class="spec-badge">B</span> Identifier</h5>
+                  <p>Unique instance number (e.g., 001, 002)</p>
               </div>
               <div class="spec-item">
-                  <h5><span class="spec-badge">C</span> Dépôts</h5>
-                  <p>Nombre de points de chargement</p>
+                  <h5><span class="spec-badge">C</span> Stations</h5>
+                  <p>Number of customers to deliver</p>
               </div>
               <div class="spec-item">
-                  <h5><span class="spec-badge">D</span> Produits</h5>
-                  <p>Nombre de types de produits différents</p>
+                  <h5><span class="spec-badge">D</span> Depots</h5>
+                  <p>Number of loading points</p>
+              </div>
+              <div class="spec-item">
+                  <h5><span class="spec-badge">E</span> Products</h5>
+                  <p>Number of different product types</p>
               </div>
           </div>
 
-        <h3>Structure interne du fichier</h3>
-        <p>Le fichier est structuré en blocs de données séquentiels. Les valeurs sont séparées par des espaces ou des tabulations.</p>
+        <h3>Internal File Structure</h3>
+        <p>The file is structured in sequential data blocks. Values are separated by spaces or tabs.</p>
 
         <div class="accordion">
             <div class="accordion-item active">
                 <div class="accordion-header">
-                    <span>1. UUID (Identifiant unique) - Ligne 1</span>
+                    <span>1. UUID (Unique Identifier) - Line 1</span>
                     <svg class="icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
                 </div>
                 <div class="accordion-content">
-                    <p>La première ligne contient un UUID v4 unique généré pour chaque instance :</p>
+                    <p>The first line contains a unique v4 UUID generated for each instance:</p>
                     <pre># c01ab718-9a2c-4a7d-bb95-f37e2a389409</pre>
-                    <p>Cet identifiant garantit l'unicité globale de l'instance et permet de tracer son origine.</p>
+                    <p>This identifier ensures global uniqueness of the instance and allows tracing its origin.</p>
                 </div>
             </div>
 
             <div class="accordion-item">
                 <div class="accordion-header">
-                    <span>2. Paramètres globaux (Ligne 2)</span>
+                    <span>2. Global Parameters (Line 2)</span>
                     <svg class="icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
                 </div>
                 <div class="accordion-content">
-                    <p>La deuxième ligne définit les dimensions du problème :</p>
-                    <pre>NbVehicules  NbDepots  NbGarages  NbStations  NbProduits</pre>
-                    <p><strong>Exemple :</strong> <code>5 2 1 20 3</code></p>
+                    <p>The second line defines the problem dimensions:</p>
+                    <pre>NbProducts NbDepots NbGarages NbStations NbVehicles</pre>
+                    <p><strong>Example:</strong> <code>3 2 1 20 5</code></p>
                     <ul>
-                        <li>5 véhicules disponibles</li>
-                        <li>2 dépôts de chargement</li>
-                        <li>1 garage pour la flotte</li>
-                        <li>20 stations-service à desservir</li>
-                        <li>3 types de produits à distribuer</li>
+                        <li>3 product types to distribute</li>
+                        <li>2 depots (loading points)</li>
+                        <li>1 garage (vehicle base)</li>
+                        <li>20 service stations (customers)</li>
+                        <li>5 available vehicles</li>
                     </ul>
                 </div>
             </div>
 
         <div class="accordion-item">
             <div class="accordion-header">
-                <span>3. Matrice de coûts de transition</span>
+                <span>3. Transition Cost Matrix</span>
                 <svg class="icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                 </svg>
             </div>
             <div class="accordion-content">
                 <p>
-                    Cette matrice carrée (taille <em>NbProduits × NbProduits</em>) définit le coût de nettoyage nécessaire pour passer d'un produit à un autre dans la citerne du camion.
+                    This square matrix (size <em>NbProducts × NbProducts</em>) defines the cleaning cost required to switch from one product to another in the truck's tank.
                 </p>
                 <pre>Cost_P1→P1  Cost_P1→P2  ...
 Cost_P2→P1  Cost_P2→P2  ...
 ...</pre>
                 <p>
-                    La valeur à la ligne <em>i</em> et colonne <em>j</em> est le coût pour passer du produit <em>i</em> au produit <em>j</em>.
-                    La diagonale est généralement nulle (pas de coût pour garder le même produit).
+                    The value at row <em>i</em> and column <em>j</em> is the cost to switch from product <em>i</em> to product <em>j</em>.
+                    The diagonal is generally zero (no cost to keep the same product).
                 </p>
             </div>
         </div>
 
             <div class="accordion-item">
                 <div class="accordion-header">
-                    <span>4. Flotte de véhicules</span>
+                    <span>4. Vehicle Fleet</span>
                     <svg class="icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
                 </div>
                 <div class="accordion-content">
-                    <p>Chaque ligne décrit un véhicule disponible :</p>
-                    <pre>ID  Capacité  GarageOrigine  ProduitInitial</pre>
+                    <p>Each line describes an available vehicle:</p>
+                    <pre>ID  Capacity  HomeGarage  InitialProduct</pre>
                     <table>
-                        <tr><th>Champ</th><th>Description</th></tr>
-                        <tr><td><code>ID</code></td><td>Identifiant unique du véhicule</td></tr>
-                        <tr><td><code>Capacité</code></td><td>Volume maximum transportable</td></tr>
-                        <tr><td><code>GarageOrigine</code></td><td>ID du garage de rattachement</td></tr>
-                        <tr><td><code>ProduitInitial</code></td><td>Configuration initiale de la citerne</td></tr>
+                        <tr><th>Field</th><th>Description</th></tr>
+                        <tr><td><code>ID</code></td><td>Unique vehicle identifier</td></tr>
+                        <tr><td><code>Capacity</code></td><td>Maximum transportable volume</td></tr>
+                        <tr><td><code>HomeGarage</code></td><td>ID of the assigned garage</td></tr>
+                        <tr><td><code>InitialProduct</code></td><td>Initial tank configuration</td></tr>
                     </table>
                 </div>
             </div>
 
             <div class="accordion-item">
                 <div class="accordion-header">
-                    <span>5. Dépôts (points de chargement)</span>
+                    <span>5. Depots (loading points)</span>
                     <svg class="icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
                 </div>
                 <div class="accordion-content">
-                    <p>Chaque ligne définit un dépôt :</p>
+                    <p>Each line defines a depot:</p>
                     <pre>ID  X  Y  Stock_P1  Stock_P2  ...  Stock_Pp</pre>
                     <ul>
-                        <li><code>X, Y</code> : Coordonnées géographiques</li>
-                        <li><code>Stock_Pi</code> : Quantité disponible pour le produit <em>i</em></li>
+                        <li><code>X, Y</code>: Geographic coordinates</li>
+                        <li><code>Stock_Pi</code>: Available quantity for product <em>i</em></li>
                     </ul>
                 </div>
             </div>
@@ -180,30 +201,30 @@ Cost_P2→P1  Cost_P2→P2  ...
                     </svg>
                 </div>
                 <div class="accordion-content">
-                    <p>Chaque ligne définit un garage :</p>
+                    <p>Each line defines a garage:</p>
                     <pre>ID  X  Y</pre>
-                    <p>Les garages servent uniquement de point de départ et d'arrivée pour les tournées.</p>
+                    <p>Garages serve only as departure and arrival points for routes.</p>
                 </div>
             </div>
 
             <div class="accordion-item">
                 <div class="accordion-header">
-                    <span>7. Stations-service (clients)</span>
+                    <span>7. Service Stations (customers)</span>
                     <svg class="icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
                 </div>
                 <div class="accordion-content">
-                    <p>Chaque ligne définit une station et ses besoins :</p>
-                    <pre>ID  X  Y  Demande_P1  Demande_P2  ...  Demande_Pp</pre>
+                    <p>Each line defines a station and its needs:</p>
+                    <pre>ID  X  Y  Demand_P1  Demand_P2  ...  Demand_Pp</pre>
                     <ul>
-                        <li><code>Demande_Pi</code> : Quantité requise pour le produit <em>i</em></li>
-                        <li>Une demande de 0 signifie que la station n'a pas besoin de ce produit.</li>
+                        <li><code>Demand_Pi</code>: Required quantity for product <em>i</em></li>
+                        <li>A demand of 0 means the station does not need this product.</li>
                     </ul>
                 </div>
             </div>
     </div>
-    <h3>Exemple d'instance</h3>
+    <h3>Instance Example</h3>
     <pre># c01ab718-9a2c-4a7d-bb95-f37e2a389409
 2	1	2	3	2
 0.0	18.1
@@ -218,83 +239,58 @@ Cost_P2→P1  Cost_P2→P2  ...
 3	56.7	31.3	0	2319
 </pre>
 
+          <!-- Section Téléchargement des Instances -->
+
     <!-- Section Format des Solutions -->
-          <h2>📋 Format des solutions</h2>
+          <h2>📋 Solution Format</h2>
           <p>
-              Pour être validée, une solution doit être fournie dans un fichier texte respectant strictement la structure ci-dessous.
-              Le nom du fichier doit correspondre à l'instance résolue (ex: <code>Sol_MPVRP_...</code>) toujours avec l'extension <code>.dat</code>.
+              To be validated, a solution must be provided in a text file strictly following the structure below.
+              The filename must match the instance being solved (e.g., <code>Sol_MPVRP_...</code>) always with the <code>.dat</code> extension.
           </p>
 
-          <h3>Structure du fichier</h3>
-          <p>Le fichier décrit les tournées véhicule par véhicule, puis termine par un résumé des performances.</p>
+          <h3>File Structure</h3>
+          <p>The file describes the routes vehicle by vehicle, then ends with a performance summary.</p>
 
           <div class="accordion">
               <div class="accordion-item active">
                   <div class="accordion-header">
-                      <span>Description des tournées</span>
+                      <span>Route Description</span>
                       <svg class="icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                       </svg>
                   </div>
                   <div class="accordion-content">
-                      <p>Pour chaque véhicule utilisé, la solution contient un bloc de <strong>2 lignes</strong> :</p>
+                      <p>For each vehicle used, the solution contains a block of <strong>2 lines</strong>:</p>
 
-                      <h5>Ligne 1 : Séquence de visite</h5>
-                      <pre>Garage - Dépôt - Station(Qté) - ... - Garage</pre>
-                      <p>Décrit le chemin parcouru. Les quantités livrées aux stations sont indiquées entre parenthèses.</p>
+                      <h5>Line 1: Visit Sequence</h5>
+                      <pre>Garage - Depot - Station(Qty) - ... - Garage</pre>
+                      <p>Describes the path taken. Quantities delivered to stations are indicated in parentheses.</p>
 
-                      <h5>Ligne 2 : Séquence des produits et coûts</h5>
-                      <pre>Prod(Coût) - Prod(Coût) - ...</pre>
-                      <p>Indique quel produit est transporté à chaque étape et le coût de changement associé (si applicable).</p>
+                      <h5>Line 2: Product Sequence and Costs</h5>
+                      <pre>Prod(Cost) - Prod(Cost) - ...</pre>
+                      <p>Indicates which product is transported at each step and the associated changeover cost (if applicable).</p>
 
                       <div class="info-box" style="margin-top: 15px; padding: 10px;">
                           <p style="font-size: 0.9em; margin: 0;">
-                              <strong>Note :</strong> Les deux lignes doivent être parfaitement alignées en termes de nombre d'étapes.
+                              <strong>Note:</strong> The two lines must be perfectly aligned in terms of the number of steps.
                           </p>
                       </div>
                   </div>
               </div>
-
-              <div class="accordion-item">
-                  <div class="accordion-header">
-                      <span>Indicateurs de performance (fin de fichier)</span>
-                      <svg class="icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                      </svg>
-                  </div>
-                  <div class="accordion-content">
-                      <p>Les 6 dernières lignes du fichier résument la qualité de la solution :</p>
-                      <ol>
-                          <li>Nombre total de changements de produit</li>
-                          <li>Nombre de véhicules utilisés</li>
-                          <li>Coût total de changement de produit</li>
-                          <li>Coût total de transport (distance)</li>
-                          <li>Information sur le système (CPU)</li>
-                          <li>Temps de calcul (secondes)</li>
-                      </ol>
-                  </div>
-              </div>
           </div>
 
-    <h3>Exemple de solution valide</h3>
+    <h3>Valid Solution Example</h3>
     <pre>1 - 3 - 8 ( 51 ) - 9 ( 63 ) - 1
 3(0.0) - 3(0.0) - 3(0.0) - 3(0.0) - 3(0.0)
 
 2 - 4 - 13 ( 18 ) - 2
 2(0.0) - 2(0.0) - 2(0.0) - 2(0.0)
-
-2
-2
-47.70
-1385.07
-Intel Core i7
-0.245</pre>
-
+</pre>
       </div>
     </main>
 
     <footer>
-        <p>&copy; 2026 Laboratoire de Recherche en Sciences Informatiques et Applications (LRSIA). Tous droits réservés.</p>
+        <p>&copy; 2026 Laboratory of Research in Computer Science and Applications (LRSIA). All rights reserved.</p>
     </footer>
 
     <script>
