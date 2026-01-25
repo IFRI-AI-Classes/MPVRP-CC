@@ -5,15 +5,17 @@ import pulp
 from .schemas import Instance
 
 SOLVER_NAME = "PULP_CBC_CMD"
-TIME_LIMIT = 100
+TIME_LIMIT = 600 # 10 minutes
 EXPORT_TOURS = True
 
 
 class Solver:
-    def __init__(self, instance: Instance, max_positions: int = None):
+    def __init__(self, instance: Instance, max_positions: int = None, time_limit: int = TIME_LIMIT):
+
         """Initialise le solveur pour une instance donnée du MPVRP-CC."""
         self.instance = instance
         self.model = pulp.LpProblem("MPVRP-CC", pulp.LpMinimize)
+        self.time_limit = time_limit
         self.solution = None
 
         self.K = [k for k in instance.camions.keys()]
@@ -374,7 +376,7 @@ class Solver:
 
     def solve(self):
         self.build_model()
-        solver = pulp.getSolver(SOLVER_NAME, timeLimit=TIME_LIMIT)
+        solver = pulp.getSolver(SOLVER_NAME, timeLimit=self.time_limit)
         start_time = time.time()
         self.model.solve(solver)
         end_time = time.time()

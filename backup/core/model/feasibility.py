@@ -199,10 +199,10 @@ if __name__ == "__main__":
     sol_path = "data/solutions/Sol_MPVRP_01_s5_d2_p2.dat"
     ins_path = "/data/instances/MPVRP_01_s5_d2_p2.dat"
 
-    from .utils import parse_instance, parse_solution_dat
+    from .utils import parse_instance, parse_solution
 
     instance = parse_instance(ins_path)
-    solution = parse_solution_dat(sol_path)
+    solution = parse_solution(sol_path)
 
     errors, computed = verify_solution(instance, solution)
     if errors:
