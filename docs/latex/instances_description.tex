@@ -1,0 +1,233 @@
+%! Author : MPVRP-CC Team
+
+\documentclass[a4paper, 12pt]{article}
+
+% --- PACKAGES FONDAMENTAUX ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage[margin=2.5cm]{geometry}
+
+% --- TYPOGRAPHIE & DESIGN ---
+\usepackage{mathpazo}
+\usepackage[scaled=0.95]{helvet}
+\usepackage[parfill]{parskip}
+\usepackage{setspace}
+\onehalfspacing
+
+% --- COULEURS & TITRES ---
+\usepackage{xcolor}
+\usepackage{titlesec}
+
+\definecolor{modernBlue}{RGB}{0, 50, 100}
+
+\titleformat{\section}
+  {\sffamily\Large\bfseries\color{modernBlue}}
+  {\thesection}
+  {1em}
+  {}
+  [{\titlerule[0.8pt]}]
+
+\titleformat{\subsection}
+  {\sffamily\large\bfseries\color{modernBlue}}
+  {\thesubsection}
+  {1em}
+  {}
+
+% --- MATHÉMATIQUES ---
+\usepackage{amsmath, amssymb}
+\usepackage{enumitem}
+
+% --- TABLES ---
+\usepackage{booktabs}
+\usepackage{array}
+
+% --- CODE LISTINGS ---
+\usepackage{listings}
+\lstset{
+    basicstyle=\ttfamily\small,
+    backgroundcolor=\color{gray!10},
+    frame=single,
+    framerule=0pt,
+    breaklines=true,
+    columns=fullflexible
+}
+
+% --- BOXES ---
+\usepackage{tcolorbox}
+\tcbuselibrary{skins}
+
+% --- INFORMATION DU DOCUMENT ---
+\title{\textbf{\sffamily\color{modernBlue} Instance format specification}}
+\author{MPVRP-CC Team}
+\date{\today}
+
+% --- DÉBUT DU DOCUMENT ---
+\begin{document}
+
+\maketitle
+
+\begin{tcolorbox}[
+    colback=modernBlue!5,
+    colframe=modernBlue,
+    title={\textbf{About this document}},
+    fonttitle=\sffamily
+]
+This document details the file format used for MPVRP-CC problem instances. These specifications are essential to ensure interoperability between the instance generator, solvers, and verification tools.
+\end{tcolorbox}
+
+\section{File format}
+
+Instances are stored in text files with the \texttt{.dat} extension.
+
+\subsection{Naming convention}
+
+The filename encodes the main characteristics of the instance:
+
+\begin{center}
+\texttt{MPVRP\_A\_B\_sC\_dD\_pE.dat}
+\end{center}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{cl}
+\toprule
+\textbf{Field} & \textbf{Description} \\
+\midrule
+\texttt{A} & Instance category: \texttt{L} for large, \texttt{M} for medium, \texttt{S} for small \\
+\texttt{B} & Unique instance number (e.g., 001, 002) \\
+\texttt{C} & Number of service stations (customers) \\
+\texttt{D} & Number of depots (loading points) \\
+\texttt{E} & Number of different product types \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Internal file structure}
+
+The file is structured in sequential data blocks. Values are separated by spaces or tabs.
+
+\subsection{UUID (line 1)}
+
+The first line contains a unique v4 UUID generated for each instance:
+
+\begin{lstlisting}
+# c01ab718-9a2c-4a7d-bb95-f37e2a389409
+\end{lstlisting}
+
+This identifier ensures global uniqueness of the instance and allows tracing its origin.
+
+\subsection{Global parameters (line 2)}
+
+The second line defines the problem dimensions:
+
+\begin{lstlisting}
+NbProducts  NbDepots  NbGarages  NbStations  NbVehicles
+\end{lstlisting}
+
+\textbf{Example:} \texttt{3 2 1 20 5} means:
+\begin{itemize}
+    \item 3 product types to distribute
+    \item 2 depots (loading points)
+    \item 1 garage (vehicle base)
+    \item 20 service stations (customers)
+    \item 5 available vehicles
+\end{itemize}
+
+\subsection{Transition cost matrix}
+
+This square matrix (size $\text{NbProducts} \times \text{NbProducts}$) defines the cleaning cost required to switch from one product to another in the truck's tank.
+
+\begin{lstlisting}
+Cost_P1->P1  Cost_P1->P2  ...
+Cost_P2->P1  Cost_P2->P2  ...
+...
+\end{lstlisting}
+
+The value at row $i$ and column $j$ is the cost to switch from product $i$ to product $j$. The diagonal is generally zero (no cost to keep the same product).
+
+\subsection{Vehicle fleet}
+
+Each line describes an available vehicle:
+
+\begin{lstlisting}
+ID  Capacity  HomeGarage  InitialProduct
+\end{lstlisting}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{ll}
+\toprule
+\textbf{Field} & \textbf{Description} \\
+\midrule
+\texttt{ID} & Unique vehicle identifier \\
+\texttt{Capacity} & Maximum transportable volume \\
+\texttt{HomeGarage} & ID of the assigned garage \\
+\texttt{InitialProduct} & Initial tank configuration \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Depots (loading points)}
+
+Each line defines a depot:
+
+\begin{lstlisting}
+ID  X  Y  Stock_P1  Stock_P2  ...  Stock_Pp
+\end{lstlisting}
+
+\begin{itemize}
+    \item \texttt{X, Y}: Geographic coordinates
+    \item \texttt{Stock\_Pi}: Available quantity for product $i$
+\end{itemize}
+
+\subsection{Garages (bases)}
+
+Each line defines a garage:
+
+\begin{lstlisting}
+ID  X  Y
+\end{lstlisting}
+
+Garages serve only as departure and arrival points for routes.
+
+\subsection{Service stations (customers)}
+
+Each line defines a station and its needs:
+
+\begin{lstlisting}
+ID  X  Y  Demand_P1  Demand_P2  ...  Demand_Pp
+\end{lstlisting}
+
+\begin{itemize}
+    \item \texttt{Demand\_Pi}: Required quantity for product $i$
+    \item A demand of 0 means the station does not need this product.
+\end{itemize}
+
+\section{Complete example}
+
+\begin{lstlisting}
+# c01ab718-9a2c-4a7d-bb95-f37e2a389409
+2   1   2   3   2
+0.0     18.1
+61.5    0.0
+1   20000   1   1
+2   20000   1   2
+1   81.6   63.6   57914   82626
+1   98.1   49.6
+2   56.8   26
+1   23.5   42.2   0       4278
+2   3.5    38.3   1344    2350
+3   56.7   31.3   0       2319
+\end{lstlisting}
+
+This example describes an instance with:
+\begin{itemize}
+    \item 2 products
+    \item 1 depot
+    \item 2 garages
+    \item 3 service stations
+    \item 2 vehicles
+\end{itemize}
+
+\end{document}
