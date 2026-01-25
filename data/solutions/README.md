@@ -15,43 +15,47 @@ Sol_MPVRP_{id_instance}_s{nb_stations}_d{nb_depots}_p{nb_produits}.dat
 
 ### Bloc 1 à N : Routes des véhicules
 
-Chaque véhicule dispose de **deux lignes** :
+Chaque véhicule dispose de **deux²   lignes** :
 
-#### Ligne 1 : Itinéraire avec quantités livrées
+
+#### Ligne 1 : Itinéraire avec quantités livrées et chargées
 ```
-1 - 3 - 8 ( 51 ) - 9 ( 63 ) - 10 ( 18 ) - 3 - 11 ( 93 ) - 12 ( 94 ) - 2 - 19 ( 45 ) - 20 ( 30 ) - 1
+1: 1 - 1 [150] - 2 (51) - 3 (63) - 4 (18) - 1 [80] - 5 (93) - 6 (94) - 7 (45) - 8 (30) - 1
 ```
 
-**Format :** `garage - dépôt - station ( quantité ) - station ( quantité ) - dépôt - station ( quantité ) - ... - garage`
+**Format :** `ID du véhicule: garage - dépôt [ quantité_chargée ] - station ( quantité_livrée ) - station ( quantité_livrée ) - dépôt [ quantité_chargée ] - station ( quantité_livrée ) - ... - garage`
 
 **Structure logique :**
 - Le véhicule **part d'un garage** (nœud sans parenthèse)
-- Se rend à un **dépôt pour se charger** (nœud sans parenthèse)
-- Effectue une **mini-tournée de livraisons aux stations** (nœuds avec parenthèses)
-- Retourne au **dépôt pour se recharger** (optionnel, peut changer de dépôt)
+- Se rend à un **dépôt pour se charger** (nœud avec crochets pour la quantité chargée)
+- Effectue une **mini-tournée de livraisons aux stations** (nœuds avec parenthèses pour les quantités livrées)
+- Retourne au **dépôt pour se recharger** (optionnel, peut changer de dépôt ; quantité chargée entre crochets)
 - Effectue une **nouvelle mini-tournée** avec possiblement un produit différent
 - Retourne à un **garage** (nœud sans parenthèse)
 
-**Codification des nœuds :**
-- Nœuds 1 à NbGarages : Garages
-- Nœuds NbGarages+1 à NbGarages+NbDépôts : Dépôts
-- Nœuds NbGarages+NbDépôts+1 à NbGarages+NbDépôts+NbStations : Stations
+**IDs des nœuds (sans accumulation, sans préfixe) :**
+
+Les IDs gardent la plage de l'instance et sont écrits sans préfixe. Le type est inféré par convention :
+- 1er et dernier nœud : garages
+- nœud avec `[Qté]` : dépôt
+- nœud avec `(Qté)` : station
 
 **Exemple :** Pour une instance avec 2 garages, 4 dépôts et 16 stations :
-- Garages : 1, 2
-- Dépôts : 3, 4, 5, 6
-- Stations : 7, 8, 9, ..., 22
+- Garages : `1`, `2` (uniquement en première/dernière position)
+- Dépôts : `1..4` (identifiés car suivis de crochets)
+- Stations : `1..16` (identifiées car suivies de parenthèses)
 
-**Quantité :** La quantité entre parenthèses indique la quantité livrée à ce nœud 
-- 0 ou absent pour les garages et dépôts
-- > 0 pour les stations uniquement
+**Quantité :** 
+- Entre crochets `[Qté]` pour les dépôts : quantité chargée à ce nœud
+- Entre parenthèses `(Qté)` pour les stations : quantité livrée à ce nœud
+- 0 ou absent pour les garages
 
 #### Ligne 2 : Produits et coûts cumulés
 ```
-3(0.0) - 3(0.0) - 3(0.0) - 3(0.0) - 3(0.0) - 2(14.4) - 2(14.4) - 2(14.4) - 2(14.4) - 1(39.4) - 1(39.4) - 1(39.4)
+1: 3(0.0) - 3(0.0) - 3(0.0) - 3(0.0) - 3(0.0) - 2(14.4) - 2(14.4) - 2(14.4) - 2(14.4) - 1(39.4) - 1(39.4) - 1(39.4)
 ```
 
-**Format :** `produit(coût_cumulé) - produit(coût_cumulé) - ...`
+**Format :** `ID du véhicule: produit(coût_cumulé) - produit(coût_cumulé) - ...`
 
 **Signification :**
 - Le chiffre avant la parenthèse : numéro du produit transporté
@@ -65,7 +69,7 @@ Chaque véhicule dispose de **deux lignes** :
 - Position 10 : Au dépôt, changement de 2→1, coût ajouté = 25.0, coût cumulé = 39.4
 - Positions 11-12 : Produit 1 à coût cumulé 39.4
 
-#### Ligne 3 : Ligne vide (séparation entre véhicules)
+#### Ligne 4 : Ligne vide (séparation entre véhicules)
 
 ---
 
@@ -75,9 +79,9 @@ Après les routes de tous les véhicules, le fichier contient 6 lignes de métri
 
 ```
 2
-7
-55.66
-1385.07
+0
+0.0
+401.86
 Intel Core i7-10700K
 0.245
 ```
@@ -90,19 +94,19 @@ Nombre de véhicules ayant au moins une livraison
 
 ### Ligne 2 : Nombre de changements de produit
 ```
-7
+0
 ```
 Nombre total de changements de produit dans la solution
 
 ### Ligne 3 : Coût total des transitions
 ```
-55.66
+0.0
 ```
 Somme des coûts de changement de produit pour tous les véhicules
 
 ### Ligne 4 : Distance totale
 ```
-1385.07
+401.86
 ```
 Distance totale parcourue par la flotte (somme des distances euclidiennes)
 
@@ -129,34 +133,39 @@ Pour l'instance `MPVRP_3_s3_d1_p2.dat` :
 - 3 stations
 - 2 véhicules
 
-**Codification des nœuds :**
-- Garages : 1, 2
-- Dépôt : 3
-- Stations : 4, 5, 6
+**IDs des nœuds (sans accumulation, sans préfixe) :**
+- Garages : `1`, `2`
+- Dépôt : `1`
+- Stations : `1`, `2`, `3`
 
 **Exemple de fichier solution :**
 ```
-1 - 3 - 4 ( 100 ) - 5 ( 50 ) - 3 - 6 ( 80 ) - 1
-1(0.0) - 1(0.0) - 1(0.0) - 1(0.0) - 2(25.3) - 2(25.3) - 2(25.3)
+1: 1 - 1 [1344] - 2 (1344) - 1
+1: 0(0.0) - 0(0.0) - 0(0.0)
 
-2 - 3 - 4 ( 75 ) - 2
-2(0.0) - 2(0.0) - 2(0.0) - 2(0.0)
+2: 1 - 1 [8947] - 1 (4278) - 2 (2350) - 3 (2319) - 1
+2: 1(0.0) - 1(0.0) - 1(0.0) - 1(0.0) - 1(0.0)
 
 2
-1
-25.30
-245.32
+0
+0.0
+401.86
 Intel Core i7-10700K
-0.152
+0.245
 ```
 
 **Analyse :**
-- **Véhicule 1** : Garage 1 → Dépôt 3 → Stations 4,5 → Dépôt 3 → Station 6 → Garage 1
-  - Mini-tournée 1 : Produit 1 (stations 4,5)
-  - Changement au dépôt 3 : 1→2 (coût 25.3)
-  - Mini-tournée 2 : Produit 2 (station 6)
+- **Véhicule 1** : Garage `1` → Dépôt `1` [chargement 1344 de produit 0] → Station `2` (livraison 1344) → Garage `1`
+  - Une seule mini-tournée, produit 0, pas de changement
   
-- **Véhicule 2** : Garage 2 → Dépôt 3 → Station 4 → Garage 2
-  - Une seule mini-tournée, pas de changement
+- **Véhicule 2** : Garage `1` → Dépôt `1` [chargement 8947 de produit 1] → Station `1` (livraison 4278) → Station `2` (livraison 2350) → Station `3` (livraison 2319) → Garage `1`
+  - Une seule mini-tournée, produit 1, pas de changement
+
+---
+
+## Compatibilité (ancien format)
+
+Les anciens fichiers utilisaient une numérotation combinée par offsets (garages puis dépôts puis stations). Le solveur exporte
+désormais en IDs typés; le vérificateur et la visualisation acceptent encore l'ancien format pour relire d'anciennes solutions.
   
-- **Métriques** : 2 véhicules utilisés, 1 changement de produit, coût 25.30
+- **Métriques** : 2 véhicules utilisés, 0 changement de produit, coût 0.0
