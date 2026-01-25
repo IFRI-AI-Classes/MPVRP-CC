@@ -14,17 +14,18 @@ router = APIRouter(prefix="/generator", tags=["Generator"])
 @router.post("/generate")
 async def generate_instance(request: InstanceGenerationRequest):
     """
-    Génère un fichier d'instance MPVRP-CC avec les paramètres spécifiés.
+    Generates an MPVRP-CC instance file with the specified parameters.
 
-    Les paramètres obligatoires sont:
-    - id_instance: Identifiant de l'instance
-    - nb_vehicules: Nombre de véhicules
-    - nb_depots: Nombre de dépôts
-    - nb_garages: Nombre de garages
-    - nb_stations: Nombre de stations
-    - nb_produits: Nombre de produits
+    The required parameters are:
 
-    Retourne directement le fichier d'instance en téléchargement.
+    - id_instance: Instance identifier
+    - nb_vehicules: Number of vehicles
+    - nb_depots: Number of depots
+    - nb_garages: Number of garages
+    - nb_stations: Number of stations
+    - nb_produits: Number of products
+
+    Returns the instance file directly for download.
     """
     try:
         # Créer un dossier temporaire pour la génération
@@ -52,7 +53,7 @@ async def generate_instance(request: InstanceGenerationRequest):
             if filepath is None:
                 raise HTTPException(
                     status_code=400,
-                    detail="Échec de la génération de l'instance. Vérifiez les paramètres fournis."
+                    detail="Instances parameters are invalid or generation failed."
                 )
 
             filename = os.path.basename(filepath)
@@ -73,4 +74,4 @@ async def generate_instance(request: InstanceGenerationRequest):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur lors de la génération: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error during generation : {str(e)}")

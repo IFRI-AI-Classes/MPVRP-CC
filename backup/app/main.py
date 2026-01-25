@@ -5,7 +5,7 @@ from backup.app.routes import generator, model
 
 app = FastAPI(
     title="MPVRP-CC API",
-    description="API pour la génération d'instances et la vérification de solutions du problème MPVRP-CC (Multi-Product Vehicle Routing Problem with Compartment Constraints)",
+    description="API for generating instances and verifying solutions to the MPVRP-CC problem (Multi-Product Vehicle Routing Problem with Changeover Cost)",
     version="1.0.0"
 )
 

@@ -3,21 +3,21 @@ from typing import Optional
 
 
 class InstanceGenerationRequest(BaseModel):
-    """Paramètres pour générer une instance MPVRP-CC"""
-    id_instance: str = Field(..., description="Identifiant de l'instance (ex: '01')")
-    nb_vehicules: int = Field(..., ge=1, description="Nombre de véhicules")
-    nb_depots: int = Field(..., ge=1, description="Nombre de dépôts")
-    nb_garages: int = Field(..., ge=1, description="Nombre de garages")
-    nb_stations: int = Field(..., ge=1, description="Nombre de stations")
-    nb_produits: int = Field(..., ge=1, description="Nombre de produits")
-    max_coord: float = Field(default=100.0, description="Taille de la grille")
-    min_capacite: int = Field(default=10000, description="Capacité minimale des véhicules")
-    max_capacite: int = Field(default=25000, description="Capacité maximale des véhicules")
-    min_transition_cost: float = Field(default=10.0, description="Coût min changement produit")
-    max_transition_cost: float = Field(default=80.0, description="Coût max changement produit")
-    min_demand: int = Field(default=500, description="Demande minimale par station/produit")
-    max_demand: int = Field(default=5000, description="Demande maximale par station/produit")
-    seed: Optional[int] = Field(default=None, description="Graine aléatoire pour reproductibilité")
+    """Parameters for generating an MPVRP-CC instance"""
+    id_instance: str = Field(..., description="Instance identifier (e.g., '01')")
+    nb_vehicules: int = Field(..., ge=1, description="Number of vehicles")
+    nb_depots: int = Field(..., ge=1, description="Number of depots")
+    nb_garages: int = Field(..., ge=1, description="Number of garages")
+    nb_stations: int = Field(..., ge=1, description="Number of stations")
+    nb_produits: int = Field(..., ge=1, description="Number of products")
+    max_coord: float = Field(default=100.0, description="Grid size")
+    min_capacite: int = Field(default=10000, description="Minimum vehicle capacity")
+    max_capacite: int = Field(default=25000, description="Maximum vehicle capacity")
+    min_transition_cost: float = Field(default=10.0, description="Minimum product changeover cost")
+    max_transition_cost: float = Field(default=80.0, description="Maximum product changeover cost")
+    min_demand: int = Field(default=500, description="Minimum demand per station/product")
+    max_demand: int = Field(default=5000, description="Maximum demand per station/product")
+    seed: Optional[int] = Field(default=None, description="Random seed for reproducibility")
 
 
 class InstanceGenerationResponse(BaseModel):

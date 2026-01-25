@@ -12,24 +12,26 @@ router = APIRouter(prefix="/model", tags=["Model"])
 
 @router.post("/verify", response_model=SolutionVerificationResponse)
 async def verify_solution_endpoint(
-    instance_file: UploadFile = File(..., description="Fichier d'instance (.dat)"),
-    solution_file: UploadFile = File(..., description="Fichier solution (.dat)")
+    instance_file: UploadFile = File(..., description="Instance file (.dat)"),
+    solution_file: UploadFile = File(..., description="Solution file (.dat)")
 ):
     """
-    Vérifie la faisabilité d'une solution pour une instance MPVRP-CC donnée.
+    Checks the feasibility of a solution for a given MPVRP-CC instance.
 
-    Effectue les vérifications suivantes:
-    - Cohérence des véhicules (départ/arrivée au bon garage)
-    - Respect des capacités des camions
-    - Conservation de la masse (quantité chargée = quantité livrée)
-    - Satisfaction de la demande de toutes les stations
-    - Respect des stocks des dépôts
-    - Validation des métriques
+    Performs the following checks:
 
-    Retourne:
-    - feasible: True si la solution est valide, False sinon
-    - errors: Liste des erreurs détectées
-    - metrics: Métriques recalculées de la solution
+    - Vehicle consistency (departure/arrival at the correct garage)
+    - Compliance with truck capacities
+    - Weight maintenance (quantity loaded = quantity delivered)
+    - Meeting the demand of all stations
+    - Compliance with depot stock levels
+    - Metric validation
+
+    Returns:
+
+    - feasible: True if the solution is valid, False otherwise
+    - errors: List of detected errors
+    - metrics: Recalculated solution metrics
     """
     temp_instance_path = None
     temp_solution_path = None
@@ -60,7 +62,7 @@ async def verify_solution_endpoint(
         )
 
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Erreur lors de la vérification: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error during verification: {str(e)}")
 
     finally:
         # Nettoyer les fichiers temporaires
