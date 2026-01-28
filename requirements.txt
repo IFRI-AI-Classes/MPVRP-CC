@@ -6,3 +6,8 @@ jinja2
 python-multipart
 aiofiles
 numpy
+
+# For testing
+pytest
+httpx
+pytest-cov
