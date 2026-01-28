@@ -1,14 +1,7 @@
-"""
-Unit tests for MPVRP-CC instance generator.
-
-Tests the instance generation functions in backup.core.generator.instance_provider:
-- generer_instance
-- validate_instance
-- get_existing_instance_ids
-"""
 import os
 import re
 import tempfile
+
 import pytest
 import numpy as np
 

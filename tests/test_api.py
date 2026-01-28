@@ -1,13 +1,5 @@
-"""
-Integration tests for MPVRP-CC FastAPI endpoints.
-
-Tests the API endpoints defined in:
-- backup.app.routes.generator
-- backup.app.routes.model
-- backup.app.main
-"""
-import os
 import io
+
 import pytest
 
 # Mark all tests in this module as API tests
@@ -37,7 +29,6 @@ class TestApiImports:
         """Test importing API schemas."""
         from backup.app.schemas import (
             InstanceGenerationRequest,
-            InstanceGenerationResponse,
             SolutionVerificationResponse
         )
         assert InstanceGenerationRequest is not None

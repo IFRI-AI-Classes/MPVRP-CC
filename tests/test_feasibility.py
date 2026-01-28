@@ -1,10 +1,4 @@
-"""
-Unit tests for MPVRP-CC solution feasibility checker.
-
-Tests the verify_solution function in backup.core.model.feasibility
-"""
 import pytest
-from typing import Dict
 
 from backup.core.model.feasibility import verify_solution
 from backup.core.model.schemas import (
@@ -20,7 +14,7 @@ class TestVerifySolutionBasic:
     @pytest.fixture
     def minimal_instance(self):
         """Create a minimal valid instance for testing."""
-        camion = Camion(id="K1", capacity=5000.0, garage_id="G1", initial_product=0)
+        camion = Camion(id="K1", capacity=5000.0, garage_id=1, initial_product=0)
         depot = Depot(id="D1", location=(50.0, 50.0), stocks={0: 3000, 1: 2000})
         garage = Garage(id="G1", location=(0.0, 0.0))
         station = Station(id="S1", location=(25.0, 25.0), demand={0: 1000, 1: 500})
@@ -107,8 +101,8 @@ class TestVerifySolutionVehicleConsistency:
     @pytest.fixture
     def instance_two_garages(self):
         """Create an instance with two garages."""
-        camion1 = Camion(id="K1", capacity=5000.0, garage_id="G1", initial_product=0)
-        camion2 = Camion(id="K2", capacity=5000.0, garage_id="G2", initial_product=0)
+        camion1 = Camion(id="K1", capacity=5000.0, garage_id=1, initial_product=0)
+        camion2 = Camion(id="K2", capacity=5000.0, garage_id=2, initial_product=0)
         depot = Depot(id="D1", location=(50.0, 50.0), stocks={0: 5000})
         garage1 = Garage(id="G1", location=(0.0, 0.0))
         garage2 = Garage(id="G2", location=(100.0, 100.0))
@@ -208,7 +202,7 @@ class TestVerifySolutionCapacity:
     @pytest.fixture
     def capacity_instance(self):
         """Create an instance for capacity testing."""
-        camion = Camion(id="K1", capacity=1000.0, garage_id="G1", initial_product=0)
+        camion = Camion(id="K1", capacity=1000.0, garage_id=1, initial_product=0)
         depot = Depot(id="D1", location=(50.0, 50.0), stocks={0: 5000})
         garage = Garage(id="G1", location=(0.0, 0.0))
         station = Station(id="S1", location=(25.0, 25.0), demand={0: 500})
@@ -264,7 +258,7 @@ class TestVerifySolutionMassConservation:
     @pytest.fixture
     def mass_instance(self):
         """Create an instance for mass conservation testing."""
-        camion = Camion(id="K1", capacity=5000.0, garage_id="G1", initial_product=0)
+        camion = Camion(id="K1", capacity=5000.0, garage_id=1, initial_product=0)
         depot = Depot(id="D1", location=(50.0, 50.0), stocks={0: 5000})
         garage = Garage(id="G1", location=(0.0, 0.0))
         station1 = Station(id="S1", location=(25.0, 25.0), demand={0: 500})
@@ -323,7 +317,7 @@ class TestVerifySolutionDemandSatisfaction:
     @pytest.fixture
     def demand_instance(self):
         """Create an instance for demand testing."""
-        camion = Camion(id="K1", capacity=5000.0, garage_id="G1", initial_product=0)
+        camion = Camion(id="K1", capacity=5000.0, garage_id=1, initial_product=0)
         depot = Depot(id="D1", location=(50.0, 50.0), stocks={0: 5000})
         garage = Garage(id="G1", location=(0.0, 0.0))
         station = Station(id="S1", location=(25.0, 25.0), demand={0: 1000})
@@ -379,7 +373,7 @@ class TestVerifySolutionStockLimits:
     @pytest.fixture
     def stock_instance(self):
         """Create an instance for stock testing."""
-        camion = Camion(id="K1", capacity=10000.0, garage_id="G1", initial_product=0)
+        camion = Camion(id="K1", capacity=10000.0, garage_id=1, initial_product=0)
         depot = Depot(id="D1", location=(50.0, 50.0), stocks={0: 500})  # Limited stock
         garage = Garage(id="G1", location=(0.0, 0.0))
         station = Station(id="S1", location=(25.0, 25.0), demand={0: 500})
@@ -435,7 +429,7 @@ class TestVerifySolutionMetrics:
     @pytest.fixture
     def metrics_instance(self):
         """Create an instance for metrics testing."""
-        camion = Camion(id="K1", capacity=5000.0, garage_id="G1", initial_product=0)
+        camion = Camion(id="K1", capacity=5000.0, garage_id=1, initial_product=0)
         depot = Depot(id="D1", location=(50.0, 50.0), stocks={0: 3000, 1: 2000})
         garage = Garage(id="G1", location=(0.0, 0.0))
         station = Station(id="S1", location=(25.0, 25.0), demand={0: 1000, 1: 500})
@@ -533,7 +527,7 @@ class TestVerifySolutionProductChanges:
     @pytest.fixture
     def product_instance(self):
         """Create an instance for product change testing."""
-        camion = Camion(id="K1", capacity=5000.0, garage_id="G1", initial_product=0)
+        camion = Camion(id="K1", capacity=5000.0, garage_id=1, initial_product=0)
         depot = Depot(id="D1", location=(50.0, 50.0), stocks={0: 5000, 1: 5000, 2: 5000})
         garage = Garage(id="G1", location=(0.0, 0.0))
         station = Station(id="S1", location=(25.0, 25.0), demand={0: 500, 1: 500, 2: 500})

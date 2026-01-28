@@ -1,19 +1,8 @@
-"""
-Unit tests for MPVRP-CC utility functions.
-
-Tests the utility functions in backup.core.model.utils:
-- euclidean_distance
-- parse_instance
-- compute_distances
-- _parse_solution_route_token
-- _parse_solution_product_token
-- solution_node_key
-- parse_solution
-"""
 import os
 import math
-import pytest
 import tempfile
+
+import pytest
 
 from backup.core.model.utils import (
     euclidean_distance,

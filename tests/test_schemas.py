@@ -1,15 +1,3 @@
-"""
-Unit tests for MPVRP-CC schema classes.
-
-Tests the data classes used throughout the project:
-- Camion (vehicle)
-- Depot
-- Garage
-- Station
-- Instance
-- ParsedSolutionVehicle
-- ParsedSolutionDat
-"""
 import pytest
 
 from backup.core.model.schemas import (
@@ -26,25 +14,25 @@ class TestCamion:
         camion = Camion(
             id="K1",
             capacity=10000.0,
-            garage_id="G1",
+            garage_id=1,
             initial_product=1
         )
         assert camion.id == "K1"
         assert camion.capacity == 10000.0
-        assert camion.garage_id == "G1"
+        assert camion.garage_id == 1
         assert camion.initial_product == 1
 
     def test_camion_with_different_capacities(self):
         """Test Camion with various capacity values."""
         capacities = [1000, 5000, 10000, 25000, 50000]
         for cap in capacities:
-            camion = Camion(id="K1", capacity=cap, garage_id="G1", initial_product=1)
+            camion = Camion(id="K1", capacity=cap, garage_id=1, initial_product=1)
             assert camion.capacity == cap
 
     def test_camion_with_different_products(self):
         """Test Camion with various initial product values."""
         for product in range(1, 6):
-            camion = Camion(id="K1", capacity=10000, garage_id="G1", initial_product=product)
+            camion = Camion(id="K1", capacity=10000, garage_id=1, initial_product=product)
             assert camion.initial_product == product
 
 

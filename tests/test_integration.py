@@ -1,10 +1,6 @@
-"""
-Integration tests for end-to-end workflows.
-
-Tests complete workflows from instance generation to solution verification.
-"""
 import os
 import tempfile
+
 import pytest
 
 pytestmark = pytest.mark.integration

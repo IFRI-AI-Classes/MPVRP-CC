@@ -1,10 +1,6 @@
-"""
-Unit tests for MPVRP-CC instance verificator.
-
-Tests the InstanceVerificator class in backup.core.generator.instance_verificator
-"""
 import os
 import tempfile
+
 import pytest
 
 from backup.core.generator.instance_verificator import InstanceVerificator
