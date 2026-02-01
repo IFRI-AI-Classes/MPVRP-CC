@@ -2,7 +2,7 @@
 // STATE MANAGEMENT
 // ═══════════════════════════════════════════════════════════════
 
-let instance = { locations: {}, demands: [] };
+let instance = { locations: {}, demands: [], depotSupplies: {} };
 let solution = { routes: {}, objective: 0 };
 
 const canvas = document.getElementById('canvas');
@@ -11,6 +11,12 @@ let width, height;
 
 // Cached transform from instance coordinates to screen coordinates
 let coordTransform = null;
+
+// Pan and zoom state
+let panOffset = { x: 0, y: 0 };
+let zoomLevel = 1;
+let isPanning = false;
+let lastMousePos = { x: 0, y: 0 };
 
 let isPlaying = false;
 let progress = 0;
@@ -21,6 +27,7 @@ let lastTime = 0;
 let trucks = [];
 let stationDemands = {};
 let stationVisits = {};
+let depotWithdrawals = {}; // Track withdrawals from depots per product
 let dataLoaded = false;
 
 const TRUCK_COLORS = [
@@ -160,6 +167,7 @@ function parseDatInstance(text) {
 
     const locations = {};
     const demands = [];
+    const depotSupplies = {};
 
     // Parse Depots
     for (let i = 0; i < numDepots; i++) {
@@ -168,6 +176,13 @@ function parseDatInstance(text) {
         const x = parseFloat(parts[1]);
         const y = parseFloat(parts[2]);
         locations[`D${id}`] = [x, y];
+
+        // Parse depot supplies for each product
+        const supplies = [];
+        for (let p = 0; p < numProducts; p++) {
+            supplies.push(parseFloat(parts[3 + p] || 0));
+        }
+        depotSupplies[`D${id}`] = supplies;
     }
 
     // Parse Garages
@@ -198,6 +213,7 @@ function parseDatInstance(text) {
     return {
         locations,
         demands,
+        depotSupplies,
         num_vehicles: numVehicles,
         num_depots: numDepots,
         num_products: numProducts,
@@ -372,6 +388,12 @@ function initData() {
     isPlaying = false;
     stationDemands = {};
     stationVisits = {};
+    depotWithdrawals = {};
+
+    // Reset pan/zoom
+    panOffset = { x: 0, y: 0 };
+    zoomLevel = 1;
+
     updatePlayBtn();
 
     // Process Demands
@@ -519,8 +541,16 @@ function getCoords(locId) {
     const [x, y] = instance.locations[locId];
     const { minX, minY, scale, offsetX, offsetY } = coordTransform;
 
-    const screenX = offsetX + (x - minX) * scale;
-    const screenY = offsetY + (y - minY) * scale;
+    // Apply base transform
+    let screenX = offsetX + (x - minX) * scale;
+    let screenY = offsetY + (y - minY) * scale;
+
+    // Apply pan and zoom (zoom centered on canvas center)
+    const centerX = width / 2;
+    const centerY = height / 2;
+    screenX = centerX + (screenX - centerX) * zoomLevel + panOffset.x;
+    screenY = centerY + (screenY - centerY) * zoomLevel + panOffset.y;
+
     return { x: screenX, y: screenY };
 }
 
@@ -870,6 +900,9 @@ function updateUI() {
 
     document.getElementById('progressText').textContent =
         `${Math.floor(progress)}/${maxProgress}`;
+
+    // Update depot inventory panel
+    updateDepotInventoryPanel();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -895,6 +928,224 @@ function toggleSidebar() {
     }, 300);
 }
 
+// ═══════════════════════════════════════════════════════════════
+// PAN & ZOOM
+// ═══════════════════════════════════════════════════════════════
+
+canvas.addEventListener('mousedown', (e) => {
+    isPanning = true;
+    lastMousePos = { x: e.clientX, y: e.clientY };
+    canvas.style.cursor = 'grabbing';
+});
+
+canvas.addEventListener('mousemove', (e) => {
+    if (!isPanning) return;
+
+    const dx = e.clientX - lastMousePos.x;
+    const dy = e.clientY - lastMousePos.y;
+
+    panOffset.x += dx;
+    panOffset.y += dy;
+
+    lastMousePos = { x: e.clientX, y: e.clientY };
+    draw();
+});
+
+canvas.addEventListener('mouseup', () => {
+    isPanning = false;
+    canvas.style.cursor = 'grab';
+});
+
+canvas.addEventListener('mouseleave', () => {
+    isPanning = false;
+    canvas.style.cursor = 'grab';
+});
+
+canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+
+    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+    const newZoom = Math.max(0.3, Math.min(5, zoomLevel * zoomFactor));
+
+    // Zoom towards mouse position
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    // Adjust pan to zoom towards mouse
+    const zoomRatio = newZoom / zoomLevel;
+    panOffset.x = mouseX - (mouseX - panOffset.x - centerX) * zoomRatio - centerX;
+    panOffset.y = mouseY - (mouseY - panOffset.y - centerY) * zoomRatio - centerY;
+
+    zoomLevel = newZoom;
+    draw();
+}, { passive: false });
+
+// Double-click to reset view
+canvas.addEventListener('dblclick', () => {
+    panOffset = { x: 0, y: 0 };
+    zoomLevel = 1;
+    draw();
+});
+
+// Touch support for mobile
+let touchStartDist = 0;
+let touchStartZoom = 1;
+
+canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+        isPanning = true;
+        lastMousePos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    } else if (e.touches.length === 2) {
+        // Pinch zoom
+        touchStartDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+        );
+        touchStartZoom = zoomLevel;
+    }
+}, { passive: true });
+
+canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+
+    if (e.touches.length === 1 && isPanning) {
+        const dx = e.touches[0].clientX - lastMousePos.x;
+        const dy = e.touches[0].clientY - lastMousePos.y;
+
+        panOffset.x += dx;
+        panOffset.y += dy;
+
+        lastMousePos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        draw();
+    } else if (e.touches.length === 2) {
+        const dist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+        );
+        zoomLevel = Math.max(0.3, Math.min(5, touchStartZoom * (dist / touchStartDist)));
+        draw();
+    }
+}, { passive: false });
+
+canvas.addEventListener('touchend', () => {
+    isPanning = false;
+});
+
+// ═══════════════════════════════════════════════════════════════
+// DEPOT INVENTORY TRACKING
+// ═══════════════════════════════════════════════════════════════
+
+function toggleDepotPanel() {
+    const panel = document.getElementById('depotInventoryPanel');
+    const btn = panel.querySelector('.depot-toggle');
+    panel.classList.toggle('collapsed');
+    btn.textContent = panel.classList.contains('collapsed') ? '+' : '−';
+}
+
+function calculateDepotInventory(currentProgress) {
+    // Start with initial supplies
+    const inventory = {};
+    const numProducts = instance.num_products || 0;
+
+    // Initialize with depot supplies
+    for (const [depotId, supplies] of Object.entries(instance.depotSupplies || {})) {
+        inventory[depotId] = [...supplies];
+    }
+
+    // Calculate withdrawals based on current progress
+    // For simplicity, we assume each depot visit withdraws proportionally
+    // In a real implementation, we'd track the actual products loaded
+    trucks.forEach(t => {
+        const completedSegs = Math.floor(Math.min(currentProgress, t.segments.length));
+        for (let i = 0; i < completedSegs; i++) {
+            const [from, to] = t.segments[i];
+            // If going TO a depot, this is a loading action (depot loses stock)
+            if (to && to.startsWith('D') && inventory[to]) {
+                // Calculate estimated withdrawal per product
+                // This is simplified - actual would need route/demand data
+                for (let p = 0; p < inventory[to].length; p++) {
+                    const withdrawal = Math.min(inventory[to][p], inventory[to][p] * 0.1);
+                    inventory[to][p] = Math.max(0, inventory[to][p] - withdrawal);
+                }
+            }
+        }
+    });
+
+    return inventory;
+}
+
+function updateDepotInventoryPanel() {
+    const panel = document.getElementById('depotInventory');
+    if (!panel) return;
+
+    const numProducts = instance.num_products || 0;
+    const depotSupplies = instance.depotSupplies || {};
+
+    if (Object.keys(depotSupplies).length === 0) {
+        panel.innerHTML = '<div class="depot-placeholder">Load an instance</div>';
+        return;
+    }
+
+    // Calculate current inventory based on progress
+    const currentInventory = {};
+    const depotVisitCounts = {};
+
+    // Initialize
+    for (const [depotId, supplies] of Object.entries(depotSupplies)) {
+        currentInventory[depotId] = [...supplies];
+        depotVisitCounts[depotId] = 0;
+    }
+
+    // Count depot visits up to current progress
+    trucks.forEach(t => {
+        const completedSegs = Math.floor(Math.min(progress, t.segments.length));
+        for (let i = 0; i < completedSegs; i++) {
+            const to = t.segments[i][1];
+            if (to && to.startsWith('D')) {
+                depotVisitCounts[to] = (depotVisitCounts[to] || 0) + 1;
+            }
+        }
+    });
+
+    // Build HTML
+    let html = '';
+    const productColors = ['#6366f1', '#22d3ee', '#f472b6', '#34d399', '#fbbf24'];
+
+    for (const [depotId, supplies] of Object.entries(depotSupplies)) {
+        const visits = depotVisitCounts[depotId] || 0;
+        html += `<div class="depot-card">
+            <div class="depot-header">
+                <span class="depot-name">🏪 ${depotId}</span>
+                <span class="depot-visits">${visits} visits</span>
+            </div>
+            <div class="depot-products">`;
+
+        supplies.forEach((qty, idx) => {
+            const color = productColors[idx % productColors.length];
+            const originalQty = qty;
+            // Simulate withdrawal based on visits
+            const currentQty = Math.max(0, originalQty - (visits * originalQty * 0.1));
+            const percent = originalQty > 0 ? (currentQty / originalQty * 100) : 100;
+
+            html += `<div class="product-row">
+                <span class="product-label" style="background: ${color}20; color: ${color}">P${idx + 1}</span>
+                <div class="product-bar-bg">
+                    <div class="product-bar" style="width: ${percent}%; background: ${color}"></div>
+                </div>
+                <span class="product-qty">${Math.round(currentQty)}</span>
+            </div>`;
+        });
+
+        html += `</div></div>`;
+    }
+
+    panel.innerHTML = html;
+}
+
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
     // Press 'B' to toggle sidebar
@@ -914,6 +1165,14 @@ document.addEventListener('keydown', (e) => {
         if (e.target.tagName !== 'INPUT') {
             e.preventDefault();
             togglePlay();
+        }
+    }
+    // Press 'R' to reset view
+    if (e.key === 'r' || e.key === 'R') {
+        if (e.target.tagName !== 'INPUT') {
+            panOffset = { x: 0, y: 0 };
+            zoomLevel = 1;
+            draw();
         }
     }
 });

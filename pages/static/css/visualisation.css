@@ -627,6 +627,169 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   DEPOT INVENTORY PANEL
+   ═══════════════════════════════════════════════════════════════ */
+
+.depot-inventory-panel {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    z-index: 40;
+    min-width: 200px;
+    max-width: 280px;
+    max-height: 300px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.depot-inventory-panel.collapsed {
+    max-height: 40px;
+}
+
+.depot-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--surface-hover);
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.depot-toggle {
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.depot-toggle:hover {
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+.depot-panel-content {
+    padding: 12px;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.depot-placeholder {
+    text-align: center;
+    padding: 16px;
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.depot-card {
+    background: var(--surface-hover);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+}
+
+.depot-card:last-child {
+    margin-bottom: 0;
+}
+
+.depot-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.depot-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.depot-visits {
+    font-size: 10px;
+    color: var(--text-dim);
+    background: var(--surface);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.depot-products {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.product-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.product-label {
+    font-size: 9px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    min-width: 24px;
+    text-align: center;
+}
+
+.product-bar-bg {
+    flex: 1;
+    height: 6px;
+    background: var(--surface);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.product-bar {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.product-qty {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-muted);
+    min-width: 35px;
+    text-align: right;
+}
+
+/* Responsive depot panel */
+@media (max-width: 768px) {
+    .depot-inventory-panel {
+        top: 8px;
+        left: 8px;
+        min-width: 160px;
+        max-width: 220px;
+        max-height: 200px;
+    }
+
+    .depot-panel-header {
+        padding: 8px 10px;
+        font-size: 11px;
+    }
+
+    .depot-panel-content {
+        padding: 8px;
+        max-height: 150px;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
    SCROLLBAR
    ═══════════════════════════════════════════════════════════════ */
 
@@ -645,5 +808,18 @@ input[type="range"]::-moz-range-thumb {
 
 .sidebar::-webkit-scrollbar-thumb:hover {
     background: var(--text-dim);
+}
+
+.depot-panel-content::-webkit-scrollbar {
+    width: 4px;
+}
+
+.depot-panel-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.depot-panel-content::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 2px;
 }
 
