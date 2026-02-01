@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MPVRP-CC - Multi-Product Vehicle Routing Problem with Changeover Cost</title>
+    <link rel="stylesheet" href="pages/static/css/style.css">
+</head>
+<body>
+
+<header>
+    <h1>
+        MPVRP-CC
+        <span>Multi-Product Vehicle Routing Problem with Changeover Cost</span>
+    </h1>
+    <nav>
+        <div class="menu-toggle" id="mobile-menu">
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+        </div>
+        <ul class="nav-links" id="nav-links">
+            <li><a href="#introduction">Introduction</a></li>
+            <li><a href="#documentation">Documentation</a></li>
+            <li><a href="#instances">Instances</a></li>
+            <li><a href="#tools">Tools</a></li>
+        </ul>
+    </nav>
+</header>
+
+<section id="introduction">
+    <h2>Introduction</h2>
+    <p>
+        Logistics optimization remains a major challenge for companies worldwide. Efficient distribution of goods directly impacts operational costs, customer satisfaction, and environmental footprint. Among the various optimization problems studied in operations research, vehicle routing problems (VRP) occupy a central place due to their practical relevance and computational complexity.
+    </p>
+    <p>
+        Each industrial sector introduces its own specific constraints. In petroleum distribution, for instance, tanker trucks must deliver multiple fuel types to service stations while managing product compatibility within their compartments. Changing the product carried by a vehicle requires tank cleaning, which incurs additional costs and time.
+    </p>
+    <p>
+        We present the <strong>Multi-Product Vehicle Routing Problem with Changeover Cost (MPVRP-CC)</strong>, a variant of the classic VRP tailored to these challenges. The MPVRP-CC aims to organize the efficient distribution of multiple product types from a set of depots to a network of service stations, while accounting for the changeover cost when a vehicle switches between products.
+    </p>
+</section>
+
+<section id="documentation">
+    <h2>Documentation</h2>
+    <p>
+        Detailed problem specifications and instance structures can be found in the <a href="https://raw.githubusercontent.com/IFRI-AI-Classes/MPVRP-CC/main/docs/problem_definition.pdf" target="_blank">overview</a> and <a href="https://raw.githubusercontent.com/IFRI-AI-Classes/MPVRP-CC/main/docs/instance_description.pdf" target="_blank">data format</a> sections, respectively. Our dataset includes 50 instances partitioned into small, medium, and large categories to reflect varying scales of stations, depots, and product quantities. Although reference solutions are not included, the expected submission format is outlined <a href="https://raw.githubusercontent.com/IFRI-AI-Classes/MPVRP-CC/main/docs/solution_description.pdf" target="_blank">here</a>.
+    </p>
+</section>
+
+<section id="instances">
+    <h2>Instances</h2>
+    <p>Benchmark instances are available in three categories based on problem size:</p>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th>Stations</th>
+                <th>Depots</th>
+                <th>Products</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Small</td>
+                <td>5 – 50</td>
+                <td>2 – 4</td>
+                <td>2 – 5</td>
+            </tr>
+            <tr>
+                <td>Medium</td>
+                <td>50 – 100</td>
+                <td>4 – 7</td>
+                <td>5 – 8</td>
+            </tr>
+            <tr>
+                <td>Large</td>
+                <td>100 – 200</td>
+                <td>6 – 10</td>
+                <td>8 – 12</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p>Download instances:</p>
+    <div class="download-links">
+        <a href="https://raw.githubusercontent.com/IFRI-AI-Classes/MPVRP-CC/main/data/zips/small.zip">Small instances</a>
+        <a href="https://raw.githubusercontent.com/IFRI-AI-Classes/MPVRP-CC/main/data/zips/medium.zip">Medium instances</a>
+        <a href="https://raw.githubusercontent.com/IFRI-AI-Classes/MPVRP-CC/main/data/zips/large.zip">Large instances</a>
+    </div>
+</section>
+
+<section id="tools">
+    <h2>Tools</h2>
+    <p>
+        We provide a suite of tools to assist in model testing, including a validator for solution certification and a synthetic instance generator. For implementation details and endpoint specifications, visit the official <a href="https://mpvrp-cc.onrender.com/docs" target="_blank">documentation</a>.
+    </p>
+</section>
+
+<footer>
+    <p>
+        Laboratory of Research in Computer Science and Applications (LRSIA), 2026
+    </p>
+</footer>
+
+<script>
+    const mobileMenu = document.getElementById('mobile-menu');
+    const navLinks = document.getElementById('nav-links');
+
+    mobileMenu.addEventListener('click', function() {
+        navLinks.classList.toggle('active');
+    });
+
+    // Close menu when clicking a link
+    document.querySelectorAll('.nav-links a').forEach(link => {
+        link.addEventListener('click', function() {
+            navLinks.classList.remove('active');
+        });
+    });
+</script>
+
+</body>
+</html>

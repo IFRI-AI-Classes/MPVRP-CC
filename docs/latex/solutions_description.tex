@@ -1,0 +1,193 @@
+%! Author : MPVRP-CC Team
+
+\documentclass[a4paper, 12pt]{article}
+
+% --- PACKAGES FONDAMENTAUX ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage[margin=2.5cm]{geometry}
+
+% --- TYPOGRAPHIE & DESIGN ---
+\usepackage{mathpazo}
+\usepackage[scaled=0.95]{helvet}
+\usepackage[parfill]{parskip}
+\usepackage{setspace}
+\onehalfspacing
+
+% --- COULEURS & TITRES ---
+\usepackage{xcolor}
+\usepackage{titlesec}
+
+\definecolor{modernBlue}{RGB}{0, 50, 100}
+
+\titleformat{\section}
+  {\sffamily\Large\bfseries\color{modernBlue}}
+  {\thesection}
+  {1em}
+  {}
+  [{\titlerule[0.8pt]}]
+
+\titleformat{\subsection}
+  {\sffamily\large\bfseries\color{modernBlue}}
+  {\thesubsection}
+  {1em}
+  {}
+
+% --- MATHÉMATIQUES ---
+\usepackage{amsmath, amssymb}
+\usepackage{enumitem}
+
+% --- CODE LISTINGS ---
+\usepackage{listings}
+\lstset{
+    basicstyle=\ttfamily\small,
+    backgroundcolor=\color{gray!10},
+    frame=single,
+    framerule=0pt,
+    breaklines=true,
+    columns=fullflexible
+}
+
+% --- BOXES ---
+\usepackage{tcolorbox}
+\tcbuselibrary{skins}
+
+% --- INFORMATION DU DOCUMENT ---
+\title{\textbf{\sffamily\color{modernBlue} Solution format specification}}
+\author{MPVRP-CC Team}
+\date{\today}
+
+% --- DÉBUT DU DOCUMENT ---
+\begin{document}
+
+\maketitle
+
+\begin{tcolorbox}[
+    colback=modernBlue!5,
+    colframe=modernBlue,
+    title={\textbf{Note}},
+    fonttitle=\sffamily
+]
+This document details the file format used for MPVRP-CC solutions. To be validated, a solution must strictly follow the structure described below.
+\end{tcolorbox}
+
+\section{File format}
+
+Solutions are stored in text files with the \texttt{.dat} extension. The filename must reference the instance being solved (e.g., \texttt{Sol\_MPVRP\_...}).
+
+\section{File structure}
+
+The file describes the routes vehicle by vehicle. For each vehicle used, the solution contains a block of \textbf{2 lines}, separated by an empty line.
+
+\subsection{Line 1: visit sequence}
+
+\begin{lstlisting}
+ID: Garage - Depot [Load] - Station (Deliver) - ... - Garage
+\end{lstlisting}
+
+This line starts with the vehicle ID and describes the path:
+\begin{itemize}
+    \item \textbf{Garage}: Start and end point (Node ID only).
+    \item \textbf{Depot}: Identified by square brackets \texttt{[Qty]} indicating quantity loaded.
+    \item \textbf{Station}: Identified by parentheses \texttt{(Qty)} indicating quantity delivered.
+\end{itemize}
+Node IDs refer to their 1-based index in the instance file (e.g., loaded at Depot 1, delivered to Station 2) and are not cumulative across types.
+
+\subsection{Line 2: product sequence and costs}
+
+\begin{lstlisting}
+ID: Prod(Cost) - Prod(Cost) - ...
+\end{lstlisting}
+
+This line indicates which product is transported at each step and the cumulative changeover cost.
+
+\begin{tcolorbox}[
+    colback=modernBlue!5,
+    colframe=modernBlue,
+    title={\textbf{Important}},
+    fonttitle=\sffamily
+]
+The two lines must be perfectly aligned in terms of the number of steps. Each element in the visit sequence corresponds to exactly one element in the product sequence.
+\end{tcolorbox}
+
+\section{Valid solution example}
+
+\begin{lstlisting}
+1: 1 - 1 [1344] - 2 (1344) - 1
+1: 0(0.0) - 0(0.0) - 0(0.0)
+
+2: 1 - 1 [8947] - 1 (4278) - 2 (2350) - 3 (2319) - 1
+2: 1(0.0) - 1(0.0) - 1(0.0) - 1(0.0) - 1(0.0)
+\end{lstlisting}
+
+In this example:
+\begin{itemize}
+    \item \textbf{Vehicle 1} starts at garage 1, loads 1344 units at depot 1, delivers 1344 units to station 2, and returns to garage 1. It carries product 0 (cost 0.0).
+    \item \textbf{Vehicle 2} starts at garage 1, loads 8947 units at depot 1, delivers to stations 1, 2, and 3, and returns to garage 1. It carries product 1 (cost 0.0).
+\end{itemize}
+
+\section{Solution metrics}
+
+After all vehicle routes, the file ends with \textbf{6 lines} of performance metrics:
+
+\begin{lstlisting}
+2
+7
+55.66
+1385.07
+Intel Core i7-10700K
+0.245
+\end{lstlisting}
+
+\subsection{Line 1: number of vehicles used}
+
+\begin{lstlisting}
+2
+\end{lstlisting}
+
+Number of vehicles with at least one delivery.
+
+\subsection{Line 2: number of product changes}
+
+\begin{lstlisting}
+7
+\end{lstlisting}
+
+Total number of product changes across the entire solution.
+
+\subsection{Line 3: total transition cost}
+
+\begin{lstlisting}
+55.66
+\end{lstlisting}
+
+Sum of all product changeover costs for all vehicles.
+
+\subsection{Line 4: total distance}
+
+\begin{lstlisting}
+1385.07
+\end{lstlisting}
+
+Total distance traveled by the fleet (sum of Euclidean distances).
+
+\subsection{Line 5: processor}
+
+\begin{lstlisting}
+Intel Core i7-10700K
+\end{lstlisting}
+
+Model of the processor on which the solution was generated.
+
+\subsection{Line 6: resolution time}
+
+\begin{lstlisting}
+0.245
+\end{lstlisting}
+
+Time elapsed to generate the solution (in seconds).
+
+
+A valid solution must satisfy all the constraints.
+\end{document}
