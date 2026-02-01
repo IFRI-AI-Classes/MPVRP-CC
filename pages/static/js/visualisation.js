@@ -228,6 +228,7 @@ function parseDatSolution(text) {
 
     const solution = {
         routes: {},
+        depotLoads: {}, // Track loading quantities at depots
         metrics: {}
     };
 
@@ -257,27 +258,37 @@ function parseDatSolution(text) {
             // Parse the route (split by " - ") and build segments
             const routeParts = routeLine.split(' - ').map(p => p.trim());
             const segments = [];
+            const vehicleLoads = []; // Track loads for this vehicle
 
-            const extractNodeId = (token, position, lastPosition) => {
-                // Token may be: "12", "12 [..]", "12 (..)", or typed "G2"/"D1"/"S5".
+            const extractNodeInfo = (token, position, lastPosition) => {
+                // Token may be: "12", "12 [qty]", "12 (qty)", or typed "G2"/"D1"/"S5".
                 const raw = String(token).trim();
                 const base = raw.split('[', 1)[0].split('(', 1)[0].trim();
 
+                // Extract quantity from brackets [qty] (depot load)
+                const bracketMatch = raw.match(/\[(\d+(?:\.\d+)?)\]/);
+                const loadQty = bracketMatch ? parseFloat(bracketMatch[1]) : 0;
+
                 const typed = base.match(/^([GDS])(\d+)$/i);
                 if (typed) {
-                    return `${typed[1].toUpperCase()}${parseInt(typed[2], 10)}`;
+                    return {
+                        id: `${typed[1].toUpperCase()}${parseInt(typed[2], 10)}`,
+                        loadQty
+                    };
                 }
 
                 const numeric = base.match(/^(?:N)?(\d+)$/);
-                if (!numeric) return null;
+                if (!numeric) return { id: null, loadQty: 0 };
                 const n = parseInt(numeric[1], 10);
 
                 // New convention (no prefixes): infer by markers/position.
-                if (raw.includes('[')) return `D#${n}`;
-                if (raw.includes('(')) return `S#${n}`;
-                if (position === 0 || position === lastPosition) return `G#${n}`;
-                // Default: treat as garage token (rare), keep marker so mapping can decide.
-                return `G#${n}`;
+                let nodeId;
+                if (raw.includes('[')) nodeId = `D#${n}`;
+                else if (raw.includes('(')) nodeId = `S#${n}`;
+                else if (position === 0 || position === lastPosition) nodeId = `G#${n}`;
+                else nodeId = `G#${n}`;
+
+                return { id: nodeId, loadQty };
             };
 
             const lastPos = routeParts.length - 1;
@@ -285,15 +296,24 @@ function parseDatSolution(text) {
                 const current = routeParts[i];
                 const next = routeParts[i + 1];
 
-                const fromId = extractNodeId(current, i, lastPos);
-                const toId = extractNodeId(next, i + 1, lastPos);
+                const fromInfo = extractNodeInfo(current, i, lastPos);
+                const toInfo = extractNodeInfo(next, i + 1, lastPos);
 
-                if (fromId && toId) {
-                    segments.push([fromId, toId]);
+                if (fromInfo.id && toInfo.id) {
+                    segments.push([fromInfo.id, toInfo.id]);
+                    // Track depot load if going to a depot with a load qty
+                    if (toInfo.loadQty > 0) {
+                        vehicleLoads.push({
+                            segmentIdx: segments.length - 1,
+                            nodeId: toInfo.id,
+                            quantity: toInfo.loadQty
+                        });
+                    }
                 }
             }
 
             solution.routes[`V${vehicleId}`] = segments;
+            solution.depotLoads[`V${vehicleId}`] = vehicleLoads;
 
             // Skip empty line separators
             while (lineIdx < lines.length && lines[lineIdx].trim() === '') {
@@ -1046,38 +1066,6 @@ function toggleDepotPanel() {
     btn.textContent = panel.classList.contains('collapsed') ? '+' : '−';
 }
 
-function calculateDepotInventory(currentProgress) {
-    // Start with initial supplies
-    const inventory = {};
-    const numProducts = instance.num_products || 0;
-
-    // Initialize with depot supplies
-    for (const [depotId, supplies] of Object.entries(instance.depotSupplies || {})) {
-        inventory[depotId] = [...supplies];
-    }
-
-    // Calculate withdrawals based on current progress
-    // For simplicity, we assume each depot visit withdraws proportionally
-    // In a real implementation, we'd track the actual products loaded
-    trucks.forEach(t => {
-        const completedSegs = Math.floor(Math.min(currentProgress, t.segments.length));
-        for (let i = 0; i < completedSegs; i++) {
-            const [from, to] = t.segments[i];
-            // If going TO a depot, this is a loading action (depot loses stock)
-            if (to && to.startsWith('D') && inventory[to]) {
-                // Calculate estimated withdrawal per product
-                // This is simplified - actual would need route/demand data
-                for (let p = 0; p < inventory[to].length; p++) {
-                    const withdrawal = Math.min(inventory[to][p], inventory[to][p] * 0.1);
-                    inventory[to][p] = Math.max(0, inventory[to][p] - withdrawal);
-                }
-            }
-        }
-    });
-
-    return inventory;
-}
-
 function updateDepotInventoryPanel() {
     const panel = document.getElementById('depotInventory');
     if (!panel) return;
@@ -1091,22 +1079,55 @@ function updateDepotInventoryPanel() {
     }
 
     // Calculate current inventory based on progress
+    // Initialize with original supplies
     const currentInventory = {};
     const depotVisitCounts = {};
+    const depotWithdrawalsTotal = {};
 
-    // Initialize
     for (const [depotId, supplies] of Object.entries(depotSupplies)) {
         currentInventory[depotId] = [...supplies];
         depotVisitCounts[depotId] = 0;
+        depotWithdrawalsTotal[depotId] = supplies.map(() => 0);
     }
 
-    // Count depot visits up to current progress
-    trucks.forEach(t => {
+    // Get instance dimensions for node mapping
+    const numGarages = instance.num_garages || 1;
+    const numDepots = instance.num_depots || 2;
+    const numStations = instance.num_stations || 5;
+
+    // Calculate withdrawals from depots based on solution loads and current progress
+    trucks.forEach((t, truckIdx) => {
+        const vehicleKey = t.id;
+        const vehicleLoads = solution.depotLoads?.[vehicleKey] || [];
         const completedSegs = Math.floor(Math.min(progress, t.segments.length));
+
         for (let i = 0; i < completedSegs; i++) {
-            const to = t.segments[i][1];
-            if (to && to.startsWith('D')) {
-                depotVisitCounts[to] = (depotVisitCounts[to] || 0) + 1;
+            const toNode = t.segments[i][1];
+
+            // Check if this segment ends at a depot
+            if (toNode && toNode.startsWith('D')) {
+                // Find the mapped depot ID
+                const depotId = toNode;
+
+                if (currentInventory[depotId]) {
+                    depotVisitCounts[depotId] = (depotVisitCounts[depotId] || 0) + 1;
+
+                    // Find the load for this segment
+                    const loadInfo = vehicleLoads.find(l => l.segmentIdx === i);
+
+                    if (loadInfo && loadInfo.quantity > 0) {
+                        // We have actual load data - subtract from ALL products proportionally
+                        // (simplified: in real scenario we'd track which product)
+                        // For now, distribute withdrawal across products based on their ratios
+                        const totalSupply = depotSupplies[depotId].reduce((a, b) => a + b, 0);
+                        for (let p = 0; p < currentInventory[depotId].length; p++) {
+                            const ratio = totalSupply > 0 ? depotSupplies[depotId][p] / totalSupply : 1 / numProducts;
+                            const withdrawal = loadInfo.quantity * ratio;
+                            currentInventory[depotId][p] -= withdrawal;
+                            depotWithdrawalsTotal[depotId][p] += withdrawal;
+                        }
+                    }
+                }
             }
         }
     });
@@ -1115,28 +1136,36 @@ function updateDepotInventoryPanel() {
     let html = '';
     const productColors = ['#6366f1', '#22d3ee', '#f472b6', '#34d399', '#fbbf24'];
 
-    for (const [depotId, supplies] of Object.entries(depotSupplies)) {
+    for (const [depotId, originalSupplies] of Object.entries(depotSupplies)) {
         const visits = depotVisitCounts[depotId] || 0;
-        html += `<div class="depot-card">
+        const currentStock = currentInventory[depotId];
+        const hasNegative = currentStock.some(qty => qty < 0);
+
+        html += `<div class="depot-card ${hasNegative ? 'depot-warning' : ''}">
             <div class="depot-header">
                 <span class="depot-name">🏪 ${depotId}</span>
-                <span class="depot-visits">${visits} visits</span>
+                <span class="depot-visits">${visits} visit${visits !== 1 ? 's' : ''}</span>
             </div>
             <div class="depot-products">`;
 
-        supplies.forEach((qty, idx) => {
+        currentStock.forEach((currentQty, idx) => {
             const color = productColors[idx % productColors.length];
-            const originalQty = qty;
-            // Simulate withdrawal based on visits
-            const currentQty = Math.max(0, originalQty - (visits * originalQty * 0.1));
-            const percent = originalQty > 0 ? (currentQty / originalQty * 100) : 100;
+            const originalQty = originalSupplies[idx];
+            const isNegative = currentQty < 0;
 
-            html += `<div class="product-row">
+            // Calculate percentage (can go below 0)
+            const percent = originalQty > 0 ? Math.max(0, (currentQty / originalQty) * 100) : 0;
+
+            // Format the quantity display
+            const displayQty = Math.round(currentQty);
+            const qtyClass = isNegative ? 'product-qty negative' : 'product-qty';
+
+            html += `<div class="product-row ${isNegative ? 'negative' : ''}">
                 <span class="product-label" style="background: ${color}20; color: ${color}">P${idx + 1}</span>
                 <div class="product-bar-bg">
-                    <div class="product-bar" style="width: ${percent}%; background: ${color}"></div>
+                    <div class="product-bar" style="width: ${percent}%; background: ${isNegative ? '#ef4444' : color}"></div>
                 </div>
-                <span class="product-qty">${Math.round(currentQty)}</span>
+                <span class="${qtyClass}">${displayQty}</span>
             </div>`;
         });
 

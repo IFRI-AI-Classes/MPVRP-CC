@@ -768,6 +768,24 @@ input[type="range"]::-moz-range-thumb {
     text-align: right;
 }
 
+.product-qty.negative {
+    color: #ef4444;
+    font-weight: 700;
+}
+
+.product-row.negative .product-bar-bg {
+    background: rgba(239, 68, 68, 0.15);
+}
+
+.depot-card.depot-warning {
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.depot-card.depot-warning .depot-name {
+    color: #ef4444;
+}
+
 /* Responsive depot panel */
 @media (max-width: 768px) {
     .depot-inventory-panel {
