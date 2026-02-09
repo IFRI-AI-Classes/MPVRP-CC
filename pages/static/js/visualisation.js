@@ -30,6 +30,21 @@ let stationVisits = {};
 let depotWithdrawals = {}; // Track withdrawals from depots per product
 let dataLoaded = false;
 
+// Exchange tracking
+let totalExchanges = 0;
+let currentExchanges = 0;
+
+// Product swap tracking for notifications
+let lastProductByTruck = {}; // Track last product for each truck
+let shownSwapNotifications = {}; // Track which swaps have been notified
+
+// Station deliveries tracking (per product)
+let stationDeliveriesPerProduct = {}; // { stationId: { productIdx: delivered } }
+let stationDemandsPerProduct = {}; // { stationId: { productIdx: demand } }
+
+// Tooltip state
+let hoveredNode = null;
+
 const TRUCK_COLORS = [
     '#6366f1', '#22d3ee', '#f472b6', '#34d399', '#fbbf24',
     '#f87171', '#a78bfa', '#2dd4bf', '#fb923c', '#e879f9'
@@ -46,6 +61,45 @@ function toggleTheme() {
     html.setAttribute('data-theme', next);
     document.getElementById('themeIcon').textContent = next === 'light' ? '☀️' : '🌙';
     draw();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NOTIFICATION SYSTEM
+// ═══════════════════════════════════════════════════════════════
+
+function showSwapNotification(truckId, fromProduct, toProduct, truckColor) {
+    const container = document.getElementById('notificationContainer');
+    if (!container) return;
+
+    const notification = document.createElement('div');
+    notification.className = 'notification';
+    notification.innerHTML = `
+        <div class="notification-icon">🔄</div>
+        <div class="notification-content">
+            <div class="notification-title">
+                <span class="notification-truck" style="background: ${truckColor}"></span>
+                ${truckId} Truck
+            </div>
+            <div class="notification-message">P${fromProduct} → P${toProduct}</div>
+        </div>
+    `;
+
+    container.appendChild(notification);
+
+    // Remove notification after animation completes
+    setTimeout(() => {
+        notification.classList.add('fade-out');
+        setTimeout(() => {
+            notification.remove();
+        }, 300);
+    }, 3000);
+}
+
+function clearAllNotifications() {
+    const container = document.getElementById('notificationContainer');
+    if (container) {
+        container.innerHTML = '';
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -195,6 +249,7 @@ function parseDatInstance(text) {
     }
 
     // Parse Stations
+    const stationDemandsPerProductLocal = {}; // Track per-product demands
     for (let i = 0; i < numStations; i++) {
         const parts = lines[lineIdx++].split(/\s+/);
         const id = parts[0];
@@ -202,11 +257,15 @@ function parseDatInstance(text) {
         const y = parseFloat(parts[2]);
         locations[`S${id}`] = [x, y];
 
-        // Sum demands for visualization
+        // Store per-product demands
+        const productDemands = [];
         let totalDemand = 0;
         for (let p = 0; p < numProducts; p++) {
-            totalDemand += parseFloat(parts[3 + p] || 0);
+            const demand = parseFloat(parts[3 + p] || 0);
+            productDemands.push(demand);
+            totalDemand += demand;
         }
+        stationDemandsPerProductLocal[`S${id}`] = productDemands;
         demands.push({ station: `S${id}`, quantity: totalDemand });
     }
 
@@ -214,6 +273,7 @@ function parseDatInstance(text) {
         locations,
         demands,
         depotSupplies,
+        stationDemandsPerProduct: stationDemandsPerProductLocal,
         num_vehicles: numVehicles,
         num_depots: numDepots,
         num_products: numProducts,
@@ -410,6 +470,24 @@ function initData() {
     stationVisits = {};
     depotWithdrawals = {};
 
+    // Reset exchange tracking
+    totalExchanges = solution.metrics?.product_changes || 0;
+    currentExchanges = 0;
+
+    // Reset product swap notification tracking
+    lastProductByTruck = {};
+    shownSwapNotifications = {};
+    clearAllNotifications();
+
+    // Reset station per-product tracking
+    stationDemandsPerProduct = instance.stationDemandsPerProduct || {};
+    stationDeliveriesPerProduct = {};
+
+    // Initialize station deliveries
+    Object.keys(stationDemandsPerProduct).forEach(stationId => {
+        stationDeliveriesPerProduct[stationId] = stationDemandsPerProduct[stationId].map(() => 0);
+    });
+
     // Reset pan/zoom
     panOffset = { x: 0, y: 0 };
     zoomLevel = 1;
@@ -456,6 +534,8 @@ function initData() {
     // Update Stats
     const metrics = solution.metrics || {};
     document.getElementById('stat-dist').textContent = (metrics.total_cost || solution.objective || 0).toFixed(2);
+    document.getElementById('stat-routing').textContent = (metrics.routing_cost || 0).toFixed(2);
+    document.getElementById('stat-exchanges').textContent = `0/${totalExchanges}`;
     document.getElementById('stat-trucks').textContent = metrics.vehicles_used || trucks.length;
 
     let totalSegs = trucks.reduce((sum, t) => sum + t.segments.length, 0);
@@ -883,6 +963,12 @@ function reset() {
     isPlaying = false;
     progress = 0;
     cancelAnimationFrame(animationId);
+
+    // Reset product swap notification tracking
+    lastProductByTruck = {};
+    shownSwapNotifications = {};
+    clearAllNotifications();
+
     updatePlayBtn();
     updateUI();
     draw();
@@ -921,8 +1007,99 @@ function updateUI() {
     document.getElementById('progressText').textContent =
         `${Math.floor(progress)}/${maxProgress}`;
 
+    // Calculate current exchanges and station deliveries based on progress
+    calculateCurrentExchangesAndDeliveries();
+
+    // Update exchanges display
+    document.getElementById('stat-exchanges').textContent = `${currentExchanges}/${totalExchanges}`;
+
     // Update depot inventory panel
     updateDepotInventoryPanel();
+}
+
+// Calculate exchanges and station deliveries based on current progress
+function calculateCurrentExchangesAndDeliveries() {
+    currentExchanges = 0;
+
+    // Reset station deliveries
+    Object.keys(stationDemandsPerProduct).forEach(stationId => {
+        stationDeliveriesPerProduct[stationId] = stationDemandsPerProduct[stationId].map(() => 0);
+    });
+
+    const numProducts = instance.num_products || 1;
+    const numGarages = instance.num_garages || 1;
+    const numDepots = instance.num_depots || 2;
+    const numStations = instance.num_stations || 5;
+
+    // Parse product lines from solution if available
+    const productLines = solution.productLines || {};
+
+    trucks.forEach((t, truckIdx) => {
+        const vehicleKey = t.id;
+        const completedSegs = Math.floor(Math.min(progress, t.segments.length));
+
+        let lastProduct = null;
+
+        for (let i = 0; i < completedSegs; i++) {
+            const toNode = t.segments[i][1];
+
+            // Check for product changes (exchanges)
+            // In absence of detailed product tracking, estimate based on segment transitions
+            // A product change typically happens when visiting different types of stations
+
+            // Track deliveries to stations
+            if (toNode && toNode.startsWith('S')) {
+                const stationId = toNode;
+                // Simulate delivery - distribute evenly across products for now
+                // In a real implementation, this would use the solution's product line
+                if (stationDeliveriesPerProduct[stationId]) {
+                    const stationDemand = stationDemandsPerProduct[stationId] || [];
+                    stationDemand.forEach((demand, pIdx) => {
+                        if (demand > 0) {
+                            // Calculate how much should be delivered per visit
+                            const totalVisits = stationVisits[stationId] || 1;
+                            const deliveryPerVisit = demand / totalVisits;
+                            stationDeliveriesPerProduct[stationId][pIdx] += deliveryPerVisit;
+                        }
+                    });
+                }
+            }
+        }
+
+        // Estimate exchanges: count transitions between depot visits
+        // (simplified - actual exchanges depend on product line in solution)
+        let depotVisitCount = 0;
+        let lastDepotProduct = lastProductByTruck[vehicleKey] || 1;
+
+        for (let i = 0; i < completedSegs; i++) {
+            const toNode = t.segments[i][1];
+            if (toNode && toNode.startsWith('D')) {
+                depotVisitCount++;
+                if (depotVisitCount > 1) {
+                    // Potential product change
+                    currentExchanges++;
+
+                    // Calculate a simulated product change (cycling through products)
+                    const newProduct = ((lastDepotProduct % numProducts) + 1);
+                    const swapKey = `${vehicleKey}-${i}`;
+
+                    // Show notification if this swap hasn't been shown yet
+                    if (!shownSwapNotifications[swapKey]) {
+                        shownSwapNotifications[swapKey] = true;
+                        showSwapNotification(vehicleKey, lastDepotProduct, newProduct, t.color);
+                    }
+
+                    lastDepotProduct = newProduct;
+                }
+            }
+        }
+
+        // Update last product tracking for this truck
+        lastProductByTruck[vehicleKey] = lastDepotProduct;
+    });
+
+    // Cap exchanges at total (estimation may overshoot)
+    currentExchanges = Math.min(currentExchanges, totalExchanges);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -959,16 +1136,25 @@ canvas.addEventListener('mousedown', (e) => {
 });
 
 canvas.addEventListener('mousemove', (e) => {
-    if (!isPanning) return;
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
 
-    const dx = e.clientX - lastMousePos.x;
-    const dy = e.clientY - lastMousePos.y;
+    // Handle panning
+    if (isPanning) {
+        const dx = e.clientX - lastMousePos.x;
+        const dy = e.clientY - lastMousePos.y;
 
-    panOffset.x += dx;
-    panOffset.y += dy;
+        panOffset.x += dx;
+        panOffset.y += dy;
 
-    lastMousePos = { x: e.clientX, y: e.clientY };
-    draw();
+        lastMousePos = { x: e.clientX, y: e.clientY };
+        draw();
+        return;
+    }
+
+    // Handle tooltip for station hover
+    handleNodeHover(mouseX, mouseY, e.clientX, e.clientY);
 });
 
 canvas.addEventListener('mouseup', () => {
@@ -979,6 +1165,7 @@ canvas.addEventListener('mouseup', () => {
 canvas.addEventListener('mouseleave', () => {
     isPanning = false;
     canvas.style.cursor = 'grab';
+    hideTooltip();
 });
 
 canvas.addEventListener('wheel', (e) => {
@@ -1173,6 +1360,145 @@ function updateDepotInventoryPanel() {
     }
 
     panel.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STATION TOOLTIP
+// ═══════════════════════════════════════════════════════════════
+
+function handleNodeHover(mouseX, mouseY, clientX, clientY) {
+    if (!dataLoaded) return;
+
+    const tooltip = document.getElementById('tooltip');
+    let foundNode = null;
+    const hitRadius = 30; // Pixel radius for hover detection
+
+    // Check if mouse is over any node
+    for (const [id, coords] of Object.entries(instance.locations)) {
+        const { x, y } = getCoords(id);
+        const dist = Math.sqrt((mouseX - x) ** 2 + (mouseY - y) ** 2);
+
+        if (dist < hitRadius) {
+            foundNode = id;
+            break;
+        }
+    }
+
+    if (foundNode) {
+        hoveredNode = foundNode;
+        showTooltip(foundNode, clientX, clientY);
+    } else {
+        hoveredNode = null;
+        hideTooltip();
+    }
+}
+
+function showTooltip(nodeId, clientX, clientY) {
+    const tooltip = document.getElementById('tooltip');
+
+    let content = '';
+    const productColors = ['#6366f1', '#22d3ee', '#f472b6', '#34d399', '#fbbf24'];
+
+    if (nodeId.startsWith('S')) {
+        // Station tooltip - show demand fulfillment
+        const demands = stationDemandsPerProduct[nodeId] || [];
+        const deliveries = stationDeliveriesPerProduct[nodeId] || [];
+
+        content = `<div class="tooltip-header">⛽ ${nodeId}</div>`;
+        content += '<div class="tooltip-content">';
+
+        if (demands.length > 0) {
+            demands.forEach((demand, idx) => {
+                const delivered = Math.round(deliveries[idx] || 0);
+                const demandRounded = Math.round(demand);
+                const excess = delivered - demandRounded;
+                const isExcess = excess > 0;
+                const isShortage = delivered < demandRounded && demand > 0;
+                const color = productColors[idx % productColors.length];
+
+                const percent = demand > 0 ? Math.min(100, (delivered / demand) * 100) : 100;
+
+                let statusClass = '';
+                let statusText = '';
+                if (isExcess) {
+                    statusClass = 'excess';
+                    statusText = ` (+${excess})`;
+                } else if (isShortage) {
+                    statusClass = 'shortage';
+                }
+
+                content += `<div class="tooltip-product ${statusClass}">
+                    <span class="tooltip-product-label" style="background: ${color}20; color: ${color}">P${idx + 1}</span>
+                    <div class="tooltip-bar-bg">
+                        <div class="tooltip-bar" style="width: ${percent}%; background: ${isExcess ? '#f59e0b' : color}"></div>
+                    </div>
+                    <span class="tooltip-qty ${statusClass}">${delivered}/${demandRounded}${statusText}</span>
+                </div>`;
+            });
+
+            // Summary
+            const totalDemand = demands.reduce((a, b) => a + b, 0);
+            const totalDelivered = deliveries.reduce((a, b) => a + b, 0);
+            const totalExcess = totalDelivered - totalDemand;
+
+            content += `<div class="tooltip-summary">`;
+            content += `<span>Total: ${Math.round(totalDelivered)}/${Math.round(totalDemand)}</span>`;
+            if (totalExcess > 0) {
+                content += `<span class="tooltip-excess-badge">+${Math.round(totalExcess)} excess</span>`;
+            } else if (totalExcess < 0) {
+                content += `<span class="tooltip-shortage-badge">${Math.round(totalExcess)} remaining</span>`;
+            }
+            content += `</div>`;
+        } else {
+            content += '<div class="tooltip-empty">No demand data</div>';
+        }
+
+        content += '</div>';
+    } else if (nodeId.startsWith('D')) {
+        // Depot tooltip
+        const supplies = instance.depotSupplies?.[nodeId] || [];
+        content = `<div class="tooltip-header">🏪 ${nodeId}</div>`;
+        content += '<div class="tooltip-content">';
+
+        if (supplies.length > 0) {
+            supplies.forEach((supply, idx) => {
+                const color = productColors[idx % productColors.length];
+                content += `<div class="tooltip-product">
+                    <span class="tooltip-product-label" style="background: ${color}20; color: ${color}">P${idx + 1}</span>
+                    <span class="tooltip-qty">${Math.round(supply)} units</span>
+                </div>`;
+            });
+        }
+        content += '</div>';
+    } else if (nodeId.startsWith('G')) {
+        // Garage tooltip
+        content = `<div class="tooltip-header">🏢 ${nodeId}</div>`;
+        content += '<div class="tooltip-content"><div class="tooltip-empty">Vehicle depot</div></div>';
+    }
+
+    tooltip.innerHTML = content;
+    tooltip.style.opacity = '1';
+
+    // Position tooltip
+    const tooltipRect = tooltip.getBoundingClientRect();
+    let left = clientX + 15;
+    let top = clientY + 15;
+
+    // Keep tooltip on screen
+    if (left + tooltipRect.width > window.innerWidth) {
+        left = clientX - tooltipRect.width - 15;
+    }
+    if (top + tooltipRect.height > window.innerHeight) {
+        top = clientY - tooltipRect.height - 15;
+    }
+
+    tooltip.style.left = left + 'px';
+    tooltip.style.top = top + 'px';
+}
+
+function hideTooltip() {
+    const tooltip = document.getElementById('tooltip');
+    tooltip.style.opacity = '0';
 }
 
 // Keyboard shortcuts
