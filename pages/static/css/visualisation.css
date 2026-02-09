@@ -527,17 +527,130 @@ input[type="range"]::-moz-range-thumb {
 
 /* Tooltip */
 .tooltip {
-    position: absolute;
+    position: fixed;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 14px;
+    border-radius: 10px;
+    padding: 0;
     font-size: 12px;
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.15s;
-    z-index: 100;
-    box-shadow: var(--shadow);
+    z-index: 1000;
+    box-shadow: var(--shadow-lg);
+    min-width: 180px;
+    max-width: 260px;
+}
+
+.tooltip-header {
+    padding: 10px 14px;
+    font-weight: 600;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-hover);
+    border-radius: 10px 10px 0 0;
+}
+
+.tooltip-content {
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.tooltip-product {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tooltip-product-label {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    min-width: 28px;
+    text-align: center;
+}
+
+.tooltip-bar-bg {
+    flex: 1;
+    height: 6px;
+    background: var(--input-bg);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.tooltip-bar {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.2s;
+}
+
+.tooltip-qty {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    min-width: 60px;
+    text-align: right;
+}
+
+.tooltip-qty.excess {
+    color: #f59e0b;
+}
+
+.tooltip-qty.shortage {
+    color: #ef4444;
+}
+
+.tooltip-product.excess {
+    background: rgba(245, 158, 11, 0.1);
+    margin: -4px -8px;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.tooltip-product.shortage {
+    background: rgba(239, 68, 68, 0.1);
+    margin: -4px -8px;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.tooltip-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.tooltip-excess-badge {
+    background: rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 10px;
+}
+
+.tooltip-shortage-badge {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 10px;
+}
+
+.tooltip-empty {
+    color: var(--text-dim);
+    font-style: italic;
+    text-align: center;
+    padding: 4px 0;
 }
 
 /* ═══════════════════════════════════════════════════════════════
