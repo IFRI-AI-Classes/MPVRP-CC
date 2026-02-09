@@ -34,6 +34,10 @@ let dataLoaded = false;
 let totalExchanges = 0;
 let currentExchanges = 0;
 
+// Product swap tracking for notifications
+let lastProductByTruck = {}; // Track last product for each truck
+let shownSwapNotifications = {}; // Track which swaps have been notified
+
 // Station deliveries tracking (per product)
 let stationDeliveriesPerProduct = {}; // { stationId: { productIdx: delivered } }
 let stationDemandsPerProduct = {}; // { stationId: { productIdx: demand } }
@@ -57,6 +61,45 @@ function toggleTheme() {
     html.setAttribute('data-theme', next);
     document.getElementById('themeIcon').textContent = next === 'light' ? '☀️' : '🌙';
     draw();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NOTIFICATION SYSTEM
+// ═══════════════════════════════════════════════════════════════
+
+function showSwapNotification(truckId, fromProduct, toProduct, truckColor) {
+    const container = document.getElementById('notificationContainer');
+    if (!container) return;
+
+    const notification = document.createElement('div');
+    notification.className = 'notification';
+    notification.innerHTML = `
+        <div class="notification-icon">🔄</div>
+        <div class="notification-content">
+            <div class="notification-title">
+                <span class="notification-truck" style="background: ${truckColor}"></span>
+                ${truckId} Truck
+            </div>
+            <div class="notification-message">P${fromProduct} → P${toProduct}</div>
+        </div>
+    `;
+
+    container.appendChild(notification);
+
+    // Remove notification after animation completes
+    setTimeout(() => {
+        notification.classList.add('fade-out');
+        setTimeout(() => {
+            notification.remove();
+        }, 300);
+    }, 3000);
+}
+
+function clearAllNotifications() {
+    const container = document.getElementById('notificationContainer');
+    if (container) {
+        container.innerHTML = '';
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -431,6 +474,11 @@ function initData() {
     totalExchanges = solution.metrics?.product_changes || 0;
     currentExchanges = 0;
 
+    // Reset product swap notification tracking
+    lastProductByTruck = {};
+    shownSwapNotifications = {};
+    clearAllNotifications();
+
     // Reset station per-product tracking
     stationDemandsPerProduct = instance.stationDemandsPerProduct || {};
     stationDeliveriesPerProduct = {};
@@ -486,6 +534,7 @@ function initData() {
     // Update Stats
     const metrics = solution.metrics || {};
     document.getElementById('stat-dist').textContent = (metrics.total_cost || solution.objective || 0).toFixed(2);
+    document.getElementById('stat-routing').textContent = (metrics.routing_cost || 0).toFixed(2);
     document.getElementById('stat-exchanges').textContent = `0/${totalExchanges}`;
     document.getElementById('stat-trucks').textContent = metrics.vehicles_used || trucks.length;
 
@@ -914,6 +963,12 @@ function reset() {
     isPlaying = false;
     progress = 0;
     cancelAnimationFrame(animationId);
+
+    // Reset product swap notification tracking
+    lastProductByTruck = {};
+    shownSwapNotifications = {};
+    clearAllNotifications();
+
     updatePlayBtn();
     updateUI();
     draw();
@@ -1014,6 +1069,8 @@ function calculateCurrentExchangesAndDeliveries() {
         // Estimate exchanges: count transitions between depot visits
         // (simplified - actual exchanges depend on product line in solution)
         let depotVisitCount = 0;
+        let lastDepotProduct = lastProductByTruck[vehicleKey] || 1;
+
         for (let i = 0; i < completedSegs; i++) {
             const toNode = t.segments[i][1];
             if (toNode && toNode.startsWith('D')) {
@@ -1021,9 +1078,24 @@ function calculateCurrentExchangesAndDeliveries() {
                 if (depotVisitCount > 1) {
                     // Potential product change
                     currentExchanges++;
+
+                    // Calculate a simulated product change (cycling through products)
+                    const newProduct = ((lastDepotProduct % numProducts) + 1);
+                    const swapKey = `${vehicleKey}-${i}`;
+
+                    // Show notification if this swap hasn't been shown yet
+                    if (!shownSwapNotifications[swapKey]) {
+                        shownSwapNotifications[swapKey] = true;
+                        showSwapNotification(vehicleKey, lastDepotProduct, newProduct, t.color);
+                    }
+
+                    lastDepotProduct = newProduct;
                 }
             }
         }
+
+        // Update last product tracking for this truck
+        lastProductByTruck[vehicleKey] = lastDepotProduct;
     });
 
     // Cap exchanges at total (estimation may overshoot)
