@@ -1,7 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from backup.database.db import engine, get_db
+import backup.database.models_db as models
 
-from backup.app.routes import generator, model
+from backup.app.routes import generator, model, scoring, auth
+#On devra import scoring dans les routes aussi
+
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="MPVRP-CC API",
@@ -21,7 +26,8 @@ app.add_middleware(
 # Inclure les routes
 app.include_router(generator.router)
 app.include_router(model.router)
-
+app.include_router(scoring.router)
+app.include_router(auth.router)
 
 @app.api_route("/", methods=["GET", "HEAD"], tags=["Root"])
 async def root():
