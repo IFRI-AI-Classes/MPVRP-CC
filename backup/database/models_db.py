@@ -18,6 +18,8 @@ class Submission(Base):
     submitted_at = Column(DateTime, default=datetime.datetime.utcnow)
     total_weighted_score = Column(Float)
     is_fully_feasible = Column(Boolean, default=False)
+    total_feasible_count = Column(Integer, default = 0)
+    category_stats = Column(String)
     processor_info = Column(String)
     resolution_time_seconds = Column(Float)
     

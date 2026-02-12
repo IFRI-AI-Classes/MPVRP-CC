@@ -27,7 +27,8 @@ def process_full_submission(submission_id: int, zip_path: str, db: Session):
     4. Applique la pondération et enregistre tout en base de données.
     """
     extract_path = f"temp_extract_{submission_id}"
-    
+    total_valid_instances = 0
+    results_per_category = {"small": 0, "medium": 0, "large": 0}
     try:
         #1/ On accède au fichier zip
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
@@ -83,6 +84,10 @@ def process_full_submission(submission_id: int, zip_path: str, db: Session):
                         # On lance la vérification avec la fonction verify_solution
                         errors, metrics = verify_solution(instance_obj, solution_obj)
                         feasible = (len(errors) == 0)
+                        if feasible:
+                            total_valid_instances +=1
+                            results_per_category[category] += 1
+
                     except Exception as e:
                         errors = [f"Erreur technique lors du parsing: {str(e)}"]
                 else:
@@ -122,6 +127,8 @@ def process_full_submission(submission_id: int, zip_path: str, db: Session):
         if sub:
             sub.total_weighted_score = total_weighted_sum / 3  # Score moyen final
             sub.is_fully_feasible = fully_feasible
+            sub.total_feasible_count = total_valid_instances
+            sub.category_stats = json.dumps(results_per_category)
             db.commit()
 
     except Exception as fatal_e:

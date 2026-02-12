@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backup.database.db import engine, get_db
 import backup.database.models_db as models
 
-from backup.app.routes import generator, model, scoring, auth
+from backup.app.routes import generator, model, scoring, leaderboard, auth
 #On devra import scoring dans les routes aussi
 
 models.Base.metadata.create_all(bind=engine)
@@ -28,6 +28,7 @@ app.include_router(generator.router)
 app.include_router(model.router)
 app.include_router(scoring.router)
 app.include_router(auth.router)
+app.include_router(leaderboard.router)
 
 @app.api_route("/", methods=["GET", "HEAD"], tags=["Root"])
 async def root():
@@ -37,7 +38,11 @@ async def root():
         "documentation": "/docs",
         "endpoints": {
             "generator": "/generator/generate - POST: Génère une instance MPVRP-CC",
-            "model": "/model/verify - POST: Vérifie une solution pour une instance"
+            "model": "/model/verify - POST: Vérifie une solution pour une instance",
+            "scoring": "/scoring/submit/{user_id} - POST: Evalue la faisabilité des 150 solutions",
+            "scoring": "/scoring/result/{submission_id} - GET: Retourne les résultats détaillés de l'évaluation de la soumission",
+            "scoring": "scoring/history/{user_id} - GET: Retourne l'historique des soumissions de l'utilisateur",
+            "leaderboard": "/leaderboard/ - GET: Renvoie le classement officiel avec la meilleure soumission par équipe"
         }
     }
 

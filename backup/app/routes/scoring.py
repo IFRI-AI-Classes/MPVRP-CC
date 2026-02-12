@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from backup.database.db import get_db
 from backup.database import models_db as models
 from backup.core.scoring.score_evaluation import process_full_submission
+from backup.core.auth.auth_logic import get_current_user
+from backup.app.schemas import SubmissionResultResponse, TeamHistoryResponse
 
 router = APIRouter(prefix="/scoring", tags=["Scoring"])
 
@@ -72,7 +74,7 @@ async def submit_solutions_endpoint(
     }
 
 #Recupération des details du traitement de la soumission
-@router.get("/result/{submission_id}")
+@router.get("/result/{submission_id}", response_model=SubmissionResultResponse)
 async def get_submission_result(
     submission_id: int, 
     db: Session = Depends(get_db)
@@ -112,5 +114,47 @@ async def get_submission_result(
         "submitted_at": submission.submitted_at,
         "total_score": submission.total_weighted_score,
         "is_fully_feasible": submission.is_fully_feasible,
+        'total_valid_instances': f'{submission.total_feasible_count}/150',
+        'total_valid_instances_per_category': submission.category_stats,
         "instances_details": detailed_results
+    }
+
+@router.get("/history/{user_id}", response_model=TeamHistoryResponse)
+async def get_user_submission_history(
+    current_user: models.User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    """
+    Retrieves the complete submission history for a specific user/team.
+
+    Returns a list of all past submissions with their global scores, 
+    feasibility status, and the number of validated instances.
+    """
+    
+    user = db.query(models.User).filter(models.User.id == current_user.id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Récupérer toutes les soumissions de cet utilisateur, de la plus récente à la plus ancienne
+    submissions = (
+        db.query(models.Submission)
+        .filter(models.Submission.user_id == current_user.id)
+        .order_by(models.Submission.submitted_at.desc())
+        .all()
+    )
+
+    history = []
+    for sub in submissions:
+        history.append({
+            "submission_id": sub.id,
+            "submitted_at": sub.submitted_at,
+            "score": round(sub.total_weighted_score, 2),
+            "valid_instances": f"{sub.total_feasible_count}/150",
+            "is_fully_feasible": sub.is_fully_feasible
+        })
+
+    return {
+        "team_name": user.team_name,
+        "total_submissions": len(history),
+        "history": history
     }
