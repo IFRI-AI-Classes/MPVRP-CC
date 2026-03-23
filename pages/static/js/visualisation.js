@@ -289,6 +289,8 @@ function parseDatSolution(text) {
     const solution = {
         routes: {},
         depotLoads: {}, // Track loading quantities at depots
+        productLines: {},
+        segmentMeta: {},
         metrics: {}
     };
 
@@ -315,10 +317,19 @@ function parseDatSolution(text) {
             productsLineRaw = productsLineRaw.replace(/^\s*\d+\s*:\s*/, '');
             lineIdx++;
 
+            const parseProductState = (token) => {
+                const m = String(token).trim().match(/^(-?\d+)\s*(?:\(([-+]?\d*\.?\d+)\))?$/);
+                if (!m) return null;
+                const idx = parseInt(m[1], 10);
+                return Number.isNaN(idx) ? null : idx;
+            };
+
             // Parse the route (split by " - ") and build segments
             const routeParts = routeLine.split(' - ').map(p => p.trim());
+            const productStates = productsLineRaw.split(' - ').map(p => parseProductState(p));
             const segments = [];
             const vehicleLoads = []; // Track loads for this vehicle
+            const vehicleSegmentMeta = [];
 
             const extractNodeInfo = (token, position, lastPosition) => {
                 // Token may be: "12", "12 [qty]", "12 (qty)", or typed "G2"/"D1"/"S5".
@@ -328,17 +339,21 @@ function parseDatSolution(text) {
                 // Extract quantity from brackets [qty] (depot load)
                 const bracketMatch = raw.match(/\[(\d+(?:\.\d+)?)\]/);
                 const loadQty = bracketMatch ? parseFloat(bracketMatch[1]) : 0;
+                // Extract quantity from parentheses (station delivery in route line)
+                const parenMatch = raw.match(/\(([-+]?\d*\.?\d+)\)/);
+                const deliveryQty = parenMatch ? parseFloat(parenMatch[1]) : 0;
 
                 const typed = base.match(/^([GDS])(\d+)$/i);
                 if (typed) {
                     return {
                         id: `${typed[1].toUpperCase()}${parseInt(typed[2], 10)}`,
-                        loadQty
+                        loadQty,
+                        deliveryQty
                     };
                 }
 
                 const numeric = base.match(/^(?:N)?(\d+)$/);
-                if (!numeric) return { id: null, loadQty: 0 };
+                if (!numeric) return { id: null, loadQty: 0, deliveryQty: 0 };
                 const n = parseInt(numeric[1], 10);
 
                 // New convention (no prefixes): infer by markers/position.
@@ -348,7 +363,7 @@ function parseDatSolution(text) {
                 else if (position === 0 || position === lastPosition) nodeId = `G#${n}`;
                 else nodeId = `G#${n}`;
 
-                return { id: nodeId, loadQty };
+                return { id: nodeId, loadQty, deliveryQty };
             };
 
             const lastPos = routeParts.length - 1;
@@ -361,6 +376,12 @@ function parseDatSolution(text) {
 
                 if (fromInfo.id && toInfo.id) {
                     segments.push([fromInfo.id, toInfo.id]);
+                    vehicleSegmentMeta.push({
+                        deliveryQty: toInfo.deliveryQty || 0,
+                        loadQty: toInfo.loadQty || 0,
+                        productRaw: productStates[i] ?? null,
+                        nextProductRaw: productStates[i + 1] ?? null
+                    });
                     // Track depot load if going to a depot with a load qty
                     if (toInfo.loadQty > 0) {
                         vehicleLoads.push({
@@ -374,6 +395,8 @@ function parseDatSolution(text) {
 
             solution.routes[`V${vehicleId}`] = segments;
             solution.depotLoads[`V${vehicleId}`] = vehicleLoads;
+            solution.productLines[`V${vehicleId}`] = productStates;
+            solution.segmentMeta[`V${vehicleId}`] = vehicleSegmentMeta;
 
             // Skip empty line separators
             while (lineIdx < lines.length && lines[lineIdx].trim() === '') {
@@ -442,6 +465,38 @@ function mapNodeNumber(nodeStr, numGarages, numDepots, numStations) {
     } else {
         return `S${nodeNum - numGarages - numDepots}`;
     }
+}
+
+function setTextContentById(id, value) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = value;
+}
+
+function detectProductIndexingBase(productLines, numProducts) {
+    const allRaw = Object.values(productLines || {})
+        .flat()
+        .filter(v => Number.isInteger(v) && v >= 0);
+
+    if (allRaw.length === 0) return 'zero';
+    if (allRaw.includes(0)) return 'zero';
+
+    const maxRaw = Math.max(...allRaw);
+    if (maxRaw === numProducts) return 'one';
+    if (maxRaw < numProducts) return 'zero';
+    return 'one';
+}
+
+function normalizeProductIndex(rawProduct, base, numProducts) {
+    if (!Number.isInteger(rawProduct) || numProducts <= 0) return null;
+
+    if (base === 'one') {
+        if (rawProduct < 1 || rawProduct > numProducts) return null;
+        return rawProduct - 1;
+    }
+
+    if (rawProduct < 0 || rawProduct >= numProducts) return null;
+    return rawProduct;
 }
 
 function updateFileStatus(type, filename) {
@@ -533,14 +588,14 @@ function initData() {
 
     // Update Stats
     const metrics = solution.metrics || {};
-    document.getElementById('stat-dist').textContent = (metrics.total_cost || solution.objective || 0).toFixed(2);
-    document.getElementById('stat-routing').textContent = (metrics.routing_cost || 0).toFixed(2);
-    document.getElementById('stat-exchanges').textContent = `0/${totalExchanges}`;
-    document.getElementById('stat-trucks').textContent = metrics.vehicles_used || trucks.length;
+    setTextContentById('stat-dist', (metrics.total_cost || solution.objective || 0).toFixed(2));
+    setTextContentById('stat-routing', (metrics.routing_cost || 0).toFixed(2));
+    // setTextContentById('stat-exchanges', `0/${totalExchanges}`);
+    setTextContentById('stat-trucks', metrics.vehicles_used || trucks.length);
 
     let totalSegs = trucks.reduce((sum, t) => sum + t.segments.length, 0);
-    document.getElementById('stat-segments').textContent = totalSegs;
-    document.getElementById('stat-status').textContent = solution.status || 'Loaded';
+    setTextContentById('stat-segments', totalSegs);
+    setTextContentById('stat-status', solution.status || 'Loaded');
 
     // Update Fleet Legend
     const legendEl = document.getElementById('fleet-legend');
@@ -1011,7 +1066,7 @@ function updateUI() {
     calculateCurrentExchangesAndDeliveries();
 
     // Update exchanges display
-    document.getElementById('stat-exchanges').textContent = `${currentExchanges}/${totalExchanges}`;
+    // document.getElementById('stat-exchanges').textContent = `${currentExchanges}/${totalExchanges}`;
 
     // Update depot inventory panel
     updateDepotInventoryPanel();
@@ -1027,79 +1082,74 @@ function calculateCurrentExchangesAndDeliveries() {
     });
 
     const numProducts = instance.num_products || 1;
-    const numGarages = instance.num_garages || 1;
-    const numDepots = instance.num_depots || 2;
-    const numStations = instance.num_stations || 5;
-
-    // Parse product lines from solution if available
     const productLines = solution.productLines || {};
+    const segmentMeta = solution.segmentMeta || {};
+    const productBase = detectProductIndexingBase(productLines, numProducts);
 
     trucks.forEach((t, truckIdx) => {
         const vehicleKey = t.id;
         const completedSegs = Math.floor(Math.min(progress, t.segments.length));
+        const vehicleProducts = productLines[vehicleKey] || [];
+        const vehicleMeta = segmentMeta[vehicleKey] || [];
 
         let lastProduct = null;
 
         for (let i = 0; i < completedSegs; i++) {
             const toNode = t.segments[i][1];
+            const segMeta = vehicleMeta[i] || {};
+            const fromProduct = normalizeProductIndex(
+                vehicleProducts[i] ?? segMeta.productRaw,
+                productBase,
+                numProducts
+            );
+            const toProduct = normalizeProductIndex(
+                vehicleProducts[i + 1] ?? segMeta.nextProductRaw,
+                productBase,
+                numProducts
+            );
+            const activeProduct = fromProduct ?? toProduct;
 
-            // Check for product changes (exchanges)
-            // In absence of detailed product tracking, estimate based on segment transitions
-            // A product change typically happens when visiting different types of stations
-
-            // Track deliveries to stations
+            // Track station deliveries for the single active product of that segment.
             if (toNode && toNode.startsWith('S')) {
                 const stationId = toNode;
-                // Simulate delivery - distribute evenly across products for now
-                // In a real implementation, this would use the solution's product line
-                if (stationDeliveriesPerProduct[stationId]) {
+                if (stationDeliveriesPerProduct[stationId] && activeProduct !== null) {
                     const stationDemand = stationDemandsPerProduct[stationId] || [];
-                    stationDemand.forEach((demand, pIdx) => {
-                        if (demand > 0) {
-                            // Calculate how much should be delivered per visit
-                            const totalVisits = stationVisits[stationId] || 1;
-                            const deliveryPerVisit = demand / totalVisits;
-                            stationDeliveriesPerProduct[stationId][pIdx] += deliveryPerVisit;
-                        }
-                    });
+                    const demandForProduct = stationDemand[activeProduct] || 0;
+                    if (demandForProduct > 0) {
+                        const explicitDelivery = Number(segMeta.deliveryQty || 0);
+                        const deliveryQty = explicitDelivery > 0
+                            ? explicitDelivery
+                            : (demandForProduct / Math.max(1, stationVisits[stationId] || 1));
+                        stationDeliveriesPerProduct[stationId][activeProduct] += deliveryQty;
+                    }
                 }
             }
-        }
 
-        // Estimate exchanges: count transitions between depot visits
-        // (simplified - actual exchanges depend on product line in solution)
-        let depotVisitCount = 0;
-        let lastDepotProduct = lastProductByTruck[vehicleKey] || 1;
-
-        for (let i = 0; i < completedSegs; i++) {
-            const toNode = t.segments[i][1];
+            // Count exchanges only when product actually changes across a depot segment.
             if (toNode && toNode.startsWith('D')) {
-                depotVisitCount++;
-                if (depotVisitCount > 1) {
-                    // Potential product change
+                if (fromProduct !== null && toProduct !== null && fromProduct !== toProduct) {
                     currentExchanges++;
-
-                    // Calculate a simulated product change (cycling through products)
-                    const newProduct = ((lastDepotProduct % numProducts) + 1);
                     const swapKey = `${vehicleKey}-${i}`;
-
-                    // Show notification if this swap hasn't been shown yet
                     if (!shownSwapNotifications[swapKey]) {
                         shownSwapNotifications[swapKey] = true;
-                        showSwapNotification(vehicleKey, lastDepotProduct, newProduct, t.color);
+                        showSwapNotification(vehicleKey, fromProduct + 1, toProduct + 1, t.color);
                     }
-
-                    lastDepotProduct = newProduct;
                 }
+            }
+
+            if (activeProduct !== null) {
+                lastProduct = activeProduct;
             }
         }
 
         // Update last product tracking for this truck
-        lastProductByTruck[vehicleKey] = lastDepotProduct;
+        lastProductByTruck[vehicleKey] = lastProduct;
     });
 
     // Cap exchanges at total (estimation may overshoot)
-    currentExchanges = Math.min(currentExchanges, totalExchanges);
+    if (Number.isFinite(totalExchanges) && totalExchanges > 0) {
+        currentExchanges = Math.min(currentExchanges, totalExchanges);
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1259,6 +1309,9 @@ function updateDepotInventoryPanel() {
 
     const numProducts = instance.num_products || 0;
     const depotSupplies = instance.depotSupplies || {};
+    const productLines = solution.productLines || {};
+    const segmentMeta = solution.segmentMeta || {};
+    const productBase = detectProductIndexingBase(productLines, numProducts);
 
     if (Object.keys(depotSupplies).length === 0) {
         panel.innerHTML = '<div class="depot-placeholder">Load an instance</div>';
@@ -1286,6 +1339,8 @@ function updateDepotInventoryPanel() {
     trucks.forEach((t, truckIdx) => {
         const vehicleKey = t.id;
         const vehicleLoads = solution.depotLoads?.[vehicleKey] || [];
+        const vehicleProducts = productLines[vehicleKey] || [];
+        const vehicleMeta = segmentMeta[vehicleKey] || [];
         const completedSegs = Math.floor(Math.min(progress, t.segments.length));
 
         for (let i = 0; i < completedSegs; i++) {
@@ -1303,15 +1358,25 @@ function updateDepotInventoryPanel() {
                     const loadInfo = vehicleLoads.find(l => l.segmentIdx === i);
 
                     if (loadInfo && loadInfo.quantity > 0) {
-                        // We have actual load data - subtract from ALL products proportionally
-                        // (simplified: in real scenario we'd track which product)
-                        // For now, distribute withdrawal across products based on their ratios
-                        const totalSupply = depotSupplies[depotId].reduce((a, b) => a + b, 0);
-                        for (let p = 0; p < currentInventory[depotId].length; p++) {
-                            const ratio = totalSupply > 0 ? depotSupplies[depotId][p] / totalSupply : 1 / numProducts;
-                            const withdrawal = loadInfo.quantity * ratio;
-                            currentInventory[depotId][p] -= withdrawal;
-                            depotWithdrawalsTotal[depotId][p] += withdrawal;
+                        const segMetaInfo = vehicleMeta[i] || {};
+                        const loadedProduct = normalizeProductIndex(
+                            vehicleProducts[i + 1] ?? segMetaInfo.nextProductRaw,
+                            productBase,
+                            numProducts
+                        );
+
+                        if (loadedProduct !== null && currentInventory[depotId][loadedProduct] !== undefined) {
+                            currentInventory[depotId][loadedProduct] -= loadInfo.quantity;
+                            depotWithdrawalsTotal[depotId][loadedProduct] += loadInfo.quantity;
+                        } else {
+                            // Backward-compatible fallback for malformed/missing product lines.
+                            const totalSupply = depotSupplies[depotId].reduce((a, b) => a + b, 0);
+                            for (let p = 0; p < currentInventory[depotId].length; p++) {
+                                const ratio = totalSupply > 0 ? depotSupplies[depotId][p] / totalSupply : 1 / Math.max(1, numProducts);
+                                const withdrawal = loadInfo.quantity * ratio;
+                                currentInventory[depotId][p] -= withdrawal;
+                                depotWithdrawalsTotal[depotId][p] += withdrawal;
+                            }
                         }
                     }
                 }
