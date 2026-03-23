@@ -5,22 +5,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backup.database.db import engine, get_db
 import backup.database.models_db as models
-from backup.app.routes import generator, model, scoring, leaderboard, auth
+from backup.database.db import engine
+from backup.app.routes import generator, model, scoring, scoreboard, auth
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Remplace les @app.on_event("startup"/"shutdown") dépréciés depuis FastAPI 0.93.
-
-    Au démarrage :
-      - Crée les tables si elles n'existent pas
-      - Nettoie le dossier temp/ des fichiers ZIP orphelins
-        (laissés par un crash serveur lors d'un traitement précédent)
-
-    """
     # Création des tables
     models.Base.metadata.create_all(bind=engine)
 
@@ -38,7 +29,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="MPVRP-CC API",
     description="API for generating instances and verifying solutions to the MPVRP-CC problem (Multi-Product Vehicle Routing Problem with Changeover Cost)",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Configuration CORS pour permettre les appels depuis n'importe quelle origine
@@ -55,7 +47,7 @@ app.include_router(generator.router)
 app.include_router(model.router)
 app.include_router(scoring.router)
 app.include_router(auth.router)
-app.include_router(leaderboard.router)
+app.include_router(scoreboard.router)
 
 @app.api_route("/", methods=["GET", "HEAD"], tags=["Root"])
 async def root():
@@ -66,10 +58,10 @@ async def root():
         "endpoints": {
             "generator": "/generator/generate - POST: Génère une instance MPVRP-CC",
             "model": "/model/verify - POST: Vérifie une solution pour une instance",
-            "scoring": "/scoring/submit/{user_id} - POST: Evalue la faisabilité des 150 solutions",
-            "scoring": "/scoring/result/{submission_id} - GET: Retourne les résultats détaillés de l'évaluation de la soumission",
-            "scoring": "scoring/history/{user_id} - GET: Retourne l'historique des soumissions de l'utilisateur",
-            "leaderboard": "/leaderboard/ - GET: Renvoie le classement officiel avec la meilleure soumission par équipe"
+            "scoring_1": "/scoring/submit/{user_id} - POST: Evalue la faisabilité des 150 solutions",
+            "scoring_2": "/scoring/result/{submission_id} - GET: Retourne les résultats détaillés de l'évaluation de la soumission",
+            "scoring_3": "scoring/history/{user_id} - GET: Retourne l'historique des soumissions de l'utilisateur",
+            "scoreboard": "/scoreboard/ - GET: Renvoie le classement officiel avec la meilleure soumission par équipe"
         }
     }
 

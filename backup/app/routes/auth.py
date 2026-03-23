@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-from backup.app.schemas import UserCreate, UserResponse, Token
+from backup.app.schemas import UserResponse, Token
 from backup.database.db import get_db
 from backup.database import models_db as models
 from backup.core.auth import auth_logic
@@ -27,7 +27,7 @@ async def register_team(
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ce nom d'équipe ou cet email est déjà utilisé."
+            detail="Team name or team email already exists",
         )
 
     # Create new user with hashed password

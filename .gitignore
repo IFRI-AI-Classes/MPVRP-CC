@@ -214,3 +214,6 @@ __marimo__/
 
 # vscode
 .vscode/
+
+backup/core/model/modelisation.py
+mpvrp_scoring.db

@@ -99,9 +99,11 @@ async function handleAuth(e) {
             setBtn('submit-btn', false, label);
             return showMessage("Team name is required.", 'error');
         }
-        const params = new URLSearchParams({ team_name: teamName, email, password });
-        const res    = await fetch(`${API_URL}/auth/register?${params}`, { method: 'POST' });
-
+        const res = await fetch(`${API_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ team_name: teamName, email, password })
+});
         if (res.ok) {
             setBtn('submit-btn', false, label);
             showMessage("Registration successful! You can now login.", 'success');
