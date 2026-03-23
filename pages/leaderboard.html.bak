@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaderboard — MPVRP-CC</title>
+    <link rel="stylesheet" href="static/css/style.css">
+    <style>
+        .leaderboard-meta {
+            color: #888;
+            font-size: 15px;
+            margin-bottom: 25px;
+        }
+
+        .leaderboard-meta span {
+            color: #3C27F5;
+            font-weight: bold;
+        }
+
+        /* Podium top 3 */
+        tr.rank-1 td { background: #fffbea; }
+        tr.rank-2 td { background: #f8f8f8; }
+        tr.rank-3 td { background: #fff5ee; }
+
+        tr.rank-1 td:first-child,
+        tr.rank-2 td:first-child,
+        tr.rank-3 td:first-child {
+            font-size: 20px;
+            text-align: center;
+        }
+
+        /* État chargement / vide / erreur */
+        .lb-state {
+            color: #888;
+            font-style: italic;
+            margin: 20px 0;
+            font-size: 15px;
+        }
+
+        .lb-error { color: #c0392b; font-style: normal; }
+
+        /* Bouton refresh */
+        .btn-refresh {
+            background: none;
+            border: 1px solid #3C27F5;
+            color: #3C27F5;
+            cursor: pointer;
+            padding: 5px 14px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+            margin-left: 12px;
+            transition: background 0.15s, color 0.15s;
+            vertical-align: middle;
+        }
+
+        .btn-refresh:hover:not(:disabled) { background: #3C27F5; color: #fff; }
+        .btn-refresh:disabled { opacity: 0.5; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>
+        MPVRP-CC
+        <span>Leaderboard</span>
+    </h1>
+    <nav>
+        <div class="menu-toggle" id="mobile-menu">
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+        </div>
+        <ul class="nav-links" id="nav-links">
+            <li><a href="../index.html">Accueil</a></li>
+            <li><a href="leaderboard.html" class="active">Leaderboard</a></li>
+            <li><a href="submission.html">Soumission</a></li>
+            <li id="nav-team-name" style="display:none; color:#3C27F5; font-weight:bold; font-size:15px; padding:0 5px;"></li>
+            <li id="nav-logout-li" style="display:none;">
+                <a href="#" onclick="logout(); return false;" style="color:#e74c3c;">Déconnexion</a>
+            </li>
+        </ul>
+    </nav>
+</header>
+
+<section>
+    <h2>
+        Classement général
+        <button class="btn-refresh" id="refresh-btn" onclick="loadLeaderboard()" title="Rafraîchir">↻ Actualiser</button>
+    </h2>
+
+    <p class="leaderboard-meta">
+        Meilleure soumission par équipe — mis à jour en temps réel.
+        <span id="lb-count"></span>
+    </p>
+
+    <div id="lb-state" class="lb-state">Chargement du classement…</div>
+
+    <table id="leaderboard-table" style="display:none;">
+        <thead>
+            <tr>
+                <th>Rang</th>
+                <th>Équipe</th>
+                <th>Score pondéré</th>
+                <th>Instances valides</th>
+                <th>Dernière soumission</th>
+            </tr>
+        </thead>
+        <tbody id="leaderboard-body"></tbody>
+    </table>
+</section>
+
+<footer>
+    <p>Laboratory of Research in Computer Science and Applications (LRSIA), 2026</p>
+</footer>
+
+<script>
+    const API_URL = "http://localhost:8000";
+
+    // ── Nav mobile ───────────────────────────────────────────
+    document.getElementById('mobile-menu').addEventListener('click', () => {
+        document.getElementById('nav-links').classList.toggle('active');
+    });
+
+    // ── Session (logout conditionnel) ────────────────────────
+    window.addEventListener('DOMContentLoaded', () => {
+        if (localStorage.getItem('token')) {
+            // On récupère le nom d'équipe depuis l'historique pour l'afficher dans la nav
+            fetchTeamName();
+            document.getElementById('nav-logout-li').style.display = 'inline';
+        }
+        loadLeaderboard();
+    });
+
+    async function fetchTeamName() {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        try {
+            const res = await fetch(`${API_URL}/scoring/history`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const el = document.getElementById('nav-team-name');
+                el.innerText = `👤 ${data.team_name}`;
+                el.style.display = 'inline';
+            } else if (res.status === 401) {
+                logout();
+            }
+        } catch (_) {}
+    }
+
+    function logout() {
+        localStorage.removeItem('token');
+        window.location.replace(window.location.pathname);
+    }
+
+    // ── Leaderboard ──────────────────────────────────────────
+    async function loadLeaderboard() {
+        const stateEl   = document.getElementById('lb-state');
+        const tableEl   = document.getElementById('leaderboard-table');
+        const tbody     = document.getElementById('leaderboard-body');
+        const countEl   = document.getElementById('lb-count');
+        const refreshBtn = document.getElementById('refresh-btn');
+
+        stateEl.className   = 'lb-state';
+        stateEl.innerText   = 'Chargement…';
+        stateEl.style.display = 'block';
+        tableEl.style.display = 'none';
+        refreshBtn.disabled = true;
+
+        try {
+            const res = await fetch(`${API_URL}/leaderboard/`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            const data = await res.json();
+
+            if (data.length === 0) {
+                stateEl.innerText = "Aucune soumission enregistrée pour l'instant. Soyez la première équipe au classement !";
+                countEl.innerText = '';
+                return;
+            }
+
+            const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
+
+            tbody.innerHTML = data.map(row => `
+                <tr class="${row.rank <= 3 ? `rank-${row.rank}` : ''}">
+                    <td>${medals[row.rank] ?? row.rank}</td>
+                    <td>${row.team}</td>
+                    <td><strong>${row.score.toFixed(2)}</strong></td>
+                    <td>${row.instances_validated}</td>
+                    <td>${formatDate(row.last_submission)}</td>
+                </tr>
+            `).join('');
+
+            countEl.innerText = `${data.length} équipe${data.length > 1 ? 's' : ''} au classement`;
+            stateEl.style.display = 'none';
+            tableEl.style.display = 'table';
+
+        } catch (err) {
+            stateEl.className = 'lb-state lb-error';
+            stateEl.innerText = "Impossible de charger le classement. Vérifiez que le serveur est accessible.";
+            console.error('Leaderboard error:', err);
+        } finally {
+            refreshBtn.disabled = false;
+        }
+    }
+
+    function formatDate(isoStr) {
+        if (!isoStr) return '—';
+        const normalized = isoStr.replace(' ', 'T').replace(/Z?$/, 'Z');
+        const d = new Date(normalized);
+        if (isNaN(d)) return isoStr;
+        return d.toLocaleString('fr-FR', { timeZone: 'Africa/Porto-Novo' });
+    }
+</script>
+
+</body>
+</html>

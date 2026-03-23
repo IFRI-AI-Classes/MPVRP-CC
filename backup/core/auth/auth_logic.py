@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from backup.database.db import get_db
 from backup.database import models_db as models
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 from dotenv import load_dotenv
 
@@ -27,7 +27,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def create_access_token(data: dict):
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -35,7 +35,7 @@ def create_access_token(data: dict):
 # Logique pour verrouiller les routes 
 # Cette ligne indique à FastAPI que le token doit se trouver dans le header "Authorization"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
-OAuth2PasswordBearer(tokenUrl="auth/login")
+# OAuth2PasswordBearer(tokenUrl="auth/login")
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     """

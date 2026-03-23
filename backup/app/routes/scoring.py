@@ -5,7 +5,7 @@ import json
 from fastapi import APIRouter, Depends, UploadFile, File, BackgroundTasks, HTTPException
 from sqlalchemy.orm import Session
 
-from backup.database.db import get_db
+from backup.database.db import get_db, SessionLocal
 from backup.database import models_db as models
 from backup.core.scoring.score_evaluation import process_full_submission
 from backup.core.auth.auth_logic import get_current_user
@@ -13,48 +13,56 @@ from backup.app.schemas import SubmissionResultResponse, TeamHistoryResponse
 
 router = APIRouter(prefix="/scoring", tags=["Scoring"])
 
-@router.post("/submit/{user_id}")
+
+def run_scoring_in_background(submission_id: int, zip_path: str):
+    """Worker avec sa propre session DB — indépendante de la session HTTP."""
+    db = SessionLocal()
+    try:
+        process_full_submission(submission_id, zip_path, db)
+    finally:
+        db.close()
+
+
+def serialize_datetime(dt) -> str:
+    """
+    Convertit un datetime Python ou une string SQLite en ISO 8601 avec T.
+    SQLAlchemy + SQLite peut retourner soit un datetime, soit une string brute
+    selon le driver: on normalise les deux cas ici.
+    """
+    if dt is None:
+        return None
+    if hasattr(dt, 'isoformat'): #objet datetime Python
+        return dt.isoformat()
+    return str(dt).replace(' ', 'T') #string SQLite "2026-03-23 10:00:00"
+
+
+@router.post("/submit")
 async def submit_solutions_endpoint(
-    user_id: int, 
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(...), 
-    db: Session = Depends(get_db)
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
 ):
-    """
-    Endpoint pour soumettre l'archive ZIP des 150 solutions.
-    
-    1. Vérifie si l'utilisateur existe.
-    2. Sauvegarde le fichier ZIP temporairement sur le serveur.
-    3. Crée une entrée 'Submission' en base de données.
-    4. Lance le calcul lourd en tâche de fond (BackgroundTasks).
-    """
-    
-    # Vérifier que l'utilisateur existe
+    user_id = current_user.id
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Utilisateur/Équipe non trouvé.e")
 
-    # Valider le format de fichier
     if not file.filename.endswith('.zip'):
         raise HTTPException(status_code=400, detail="Seuls les fichiers .zip sont acceptés")
 
-    # On utilise un UUID pour éviter que deux uploads simultanés ne se chevauchent et on sauvegarde le fichier
     unique_filename = f"upload_{uuid.uuid4()}.zip"
     temp_path = os.path.join("temp", unique_filename)
-    
-    # Créer le dossier temp s'il n'existe pas
     os.makedirs("temp", exist_ok=True)
 
     try:
         with open(temp_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer) #Ecriture par morceaux (chunks) pour ne pas surcharger la mémoire
+            shutil.copyfileobj(file.file, buffer)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur lors de la sauvegarde : {str(e)}")
 
-    # Enregistrement de soumission
-    # Le score est initialisé à 0.0 et sera mis à jour par la tâche de fond
     new_submission = models.Submission(
-        user_id=user_id, 
+        user_id=user_id,
         total_weighted_score=0.0,
         is_fully_feasible=False
     )
@@ -62,9 +70,7 @@ async def submit_solutions_endpoint(
     db.commit()
     db.refresh(new_submission)
 
-    # Processus de traitement asynchrone
-    # Le serveur travaille sur les 150 instances en arrière-plan et l'user peut faire autre chose
-    background_tasks.add_task(process_full_submission, new_submission.id, temp_path, db)
+    background_tasks.add_task(run_scoring_in_background, new_submission.id, temp_path)
 
     return {
         "status": "Accepted",
@@ -73,85 +79,86 @@ async def submit_solutions_endpoint(
         "message": "Le calcul de votre score a débuté. Les résultats seront bientôt disponibles sur le leaderboard."
     }
 
-#Recupération des details du traitement de la soumission
+
 @router.get("/result/{submission_id}", response_model=SubmissionResultResponse)
 async def get_submission_result(
-    submission_id: int, 
-    db: Session = Depends(get_db)
+    submission_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
 ):
-    """
-    Récupère le résultat détaillé d'une soumission :
-    - Score global
-    - Statut de faisabilité
-    - Détail par instance (avec les logs d'erreurs)
-    """
-    
-    # On cherche la soumission
     submission = db.query(models.Submission).filter(models.Submission.id == submission_id).first()
-    
+
     if not submission:
         raise HTTPException(status_code=404, detail="Soumission non trouvée")
 
-    # On récupère toutes les instances liées à cette soumission
-    results = db.query(models.InstanceResult).filter(
-        models.InstanceResult.submission_id == submission_id
-    ).all()
+    if submission.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Accès non autorisé à cette soumission")
 
-    # On prépare une réponse structurée (JSON -> Python Object) qu'on va return
-    detailed_results = []
-    for r in results:
-        detailed_results.append({
+    db.refresh(submission)
+
+    is_ready = submission.total_weighted_score is not None and submission.total_weighted_score > 0
+
+    results = []
+    if is_ready:
+        results = db.query(models.InstanceResult).filter(
+            models.InstanceResult.submission_id == submission_id
+        ).all()
+
+    detailed_results = [
+        {
             "instance": r.instance_name,
             "category": r.category,
             "feasible": r.is_feasible,
             "distance": r.calculated_distance,
             "transition_cost": r.calculated_transition_cost,
             "errors": json.loads(r.errors_log) if r.errors_log else []
-        })
+        }
+        for r in results
+    ]
 
     return {
         "submission_id": submission.id,
-        "submitted_at": submission.submitted_at,
+        "submitted_at": serialize_datetime(submission.submitted_at),
         "total_score": submission.total_weighted_score,
         "is_fully_feasible": submission.is_fully_feasible,
-        'total_valid_instances': f'{submission.total_feasible_count}/150',
-        'total_valid_instances_per_category': submission.category_stats,
+        "total_valid_instances": f"{submission.total_feasible_count}/150",
+        "total_valid_instances_per_category": submission.category_stats,
+        "is_ready": is_ready,
+        "processor_info": submission.processor_info,
         "instances_details": detailed_results
     }
 
-@router.get("/history/{user_id}", response_model=TeamHistoryResponse)
+
+@router.get("/history", response_model=TeamHistoryResponse)
 async def get_user_submission_history(
-    current_user: models.User = Depends(get_current_user), 
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Retrieves the complete submission history for a specific user/team.
-
-    Returns a list of all past submissions with their global scores, 
-    feasibility status, and the number of validated instances.
-    """
-    
     user = db.query(models.User).filter(models.User.id == current_user.id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Récupérer toutes les soumissions de cet utilisateur, de la plus récente à la plus ancienne
     submissions = (
         db.query(models.Submission)
         .filter(models.Submission.user_id == current_user.id)
-        .order_by(models.Submission.submitted_at.desc())
+        .order_by(models.Submission.submitted_at.asc())
         .all()
     )
 
     history = []
-    for sub in submissions:
+    for number, sub in enumerate(submissions, start=1):
         history.append({
             "submission_id": sub.id,
-            "submitted_at": sub.submitted_at,
+            # Numéro relatif à l'équipe : 1, 2, 3... peu importe l'id global
+            "submission_number": number,
+            "submitted_at": serialize_datetime(sub.submitted_at),
             "score": round(sub.total_weighted_score, 2),
             "valid_instances": f"{sub.total_feasible_count}/150",
             "is_fully_feasible": sub.is_fully_feasible
         })
+
+    # Réordonne du plus récent au plus ancien pour l'affichage
+    history.reverse()
 
     return {
         "team_name": user.team_name,

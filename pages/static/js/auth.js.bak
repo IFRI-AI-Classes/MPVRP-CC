@@ -1,0 +1,364 @@
+const API_URL  = "http://localhost:8000";
+let   authMode = 'login';
+
+document.getElementById('mobile-menu').addEventListener('click', () => {
+    document.getElementById('nav-links').classList.toggle('active');
+});
+
+// ═══════════════
+// UTILITAIRES
+// ═══════════════
+
+function showMessage(message, type = 'error') {
+    const existing = document.getElementById('msg-banner');
+    if (existing) existing.remove();
+
+    const colors = {
+        error:   { bg: '#fdf2f2', border: '#e74c3c', text: '#c0392b' },
+        success: { bg: '#f0fdf4', border: '#27ae60', text: '#1e8449' },
+        info:    { bg: '#eff6ff', border: '#3C27F5', text: '#3C27F5' },
+    };
+    const c = colors[type] || colors.error;
+
+    const banner = document.createElement('div');
+    banner.id = 'msg-banner';
+    banner.className = 'msg-banner';
+    banner.style.cssText = `
+        background:${c.bg}; border:1px solid ${c.border}; color:${c.text};
+    `;
+    banner.innerText = message;
+
+    const authVisible = document.getElementById('auth-section').style.display !== 'none';
+    const anchor = authVisible
+        ? document.getElementById('auth-form')
+        : document.getElementById('user-section').querySelector('.upload-card');
+    anchor.insertAdjacentElement('afterend', banner);
+
+    if (type !== 'info') {
+        setTimeout(() => {
+            banner.style.opacity = '0';
+            setTimeout(() => banner.remove(), 400);
+        }, 5000);
+    }
+}
+
+function setBtn(id, loading, defaultText) {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.disabled  = loading;
+    btn.innerText = loading ? "Chargement…" : defaultText;
+}
+
+function formatDate(isoStr) {
+    if (!isoStr) return '—';
+    // Format UTC+1
+    const normalized = isoStr.replace(' ', 'T').replace(/Z?$/, 'Z');
+    const d = new Date(normalized);
+    if (isNaN(d)) return isoStr;
+    return d.toLocaleString('fr-FR', { timeZone: 'Africa/Porto-Novo' });
+}
+
+// AUTH
+function switchTab(mode) {
+    authMode = mode;
+    const existing = document.getElementById('msg-banner');
+    if (existing) existing.remove();
+
+    document.getElementById('group-team').style.display = mode === 'register' ? 'block' : 'none';
+    document.getElementById('submit-btn').innerText     = mode === 'register' ? "Créer un compte" : "Se connecter";
+    document.getElementById('tab-login').classList.toggle('active',    mode === 'login');
+    document.getElementById('tab-register').classList.toggle('active', mode === 'register');
+}
+
+async function handleAuth(e) {
+    e.preventDefault();
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const label    = authMode === 'register' ? "Créer un compte" : "Se connecter";
+    setBtn('submit-btn', true, label);
+
+    if (authMode === 'login') {
+        const fd = new FormData();
+        fd.append('username', email);
+        fd.append('password', password);
+
+        const res = await fetch(`${API_URL}/auth/login`, { method: 'POST', body: fd });
+        if (res.ok) {
+            const data = await res.json();
+            localStorage.setItem('token', data.access_token);
+            showUserSection();
+        } else {
+            setBtn('submit-btn', false, label);
+            showMessage("Email ou mot de passe incorrect.", 'error');
+        }
+
+    } else {
+        const teamName = document.getElementById('team_name').value.trim();
+        if (!teamName) {
+            setBtn('submit-btn', false, label);
+            return showMessage("Le nom d'équipe est requis.", 'error');
+        }
+        const params = new URLSearchParams({ team_name: teamName, email, password });
+        const res    = await fetch(`${API_URL}/auth/register?${params}`, { method: 'POST' });
+
+        if (res.ok) {
+            setBtn('submit-btn', false, label);
+            showMessage("Inscription réussie ! Vous pouvez vous connecter.", 'success');
+            setTimeout(() => switchTab('login'), 1500);
+        } else {
+            const err = await res.json();
+            setBtn('submit-btn', false, label);
+            showMessage(err.detail || "Nom d'équipe ou email déjà utilisé.", 'error');
+        }
+    }
+}
+
+
+// UPLOAD
+async function handleFileUpload() {
+    const fileInput = document.getElementById('zip-file');
+    const token     = localStorage.getItem('token');
+
+    if (!token)              return showMessage("Session expirée. Reconnectez-vous.", 'error');
+    if (!fileInput.files[0]) return showMessage("Choisissez un fichier .zip avant de lancer l'évaluation.", 'error');
+
+    setBtn('upload-btn', true, "Lancer l'évaluation");
+
+    const fd = new FormData();
+    fd.append('file', fileInput.files[0]);
+
+    const res = await fetch(`${API_URL}/scoring/submit`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: fd
+    });
+
+    setBtn('upload-btn', false, "Lancer l'évaluation");
+
+    if (res.ok) {
+        const data = await res.json();
+        showMessage(`Soumission acceptée — calcul en cours…`, 'info');
+        pollResult(data.submission_id);
+        loadHistory();
+    } else if (res.status === 401) {
+        showMessage("Session invalide. Reconnectez-vous.", 'error');
+        logout();
+    } else {
+        const err = await res.json();
+        showMessage("Erreur : " + (err.detail || "Échec de l'envoi."), 'error');
+    }
+}
+
+// POLLING
+function pollResult(submissionId) {
+    const token      = localStorage.getItem('token');
+    const maxRetries = 20;
+    let   attempts   = 0;
+
+    const interval = setInterval(async () => {
+        attempts++;
+        try {
+            const res = await fetch(`${API_URL}/scoring/result/${submissionId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (res.status === 401) { clearInterval(interval); logout(); return; }
+
+            if (res.ok) {
+                const data = await res.json();
+                console.log(`[POLLING #${attempts}] is_ready=${data.is_ready} score=${data.total_score}`, data);
+                if (data.is_ready) {
+                    clearInterval(interval);
+                    console.log("[POLLING] Terminé — affichage du résultat");
+                    const b = document.getElementById('msg-banner');
+                    if (b) b.remove();
+                    showMessage(
+                        `Score calculé : ${data.total_score.toFixed(4)} — ${data.total_valid_instances} instances valides.`,
+                        'success'
+                    );
+                    displayResult(data);
+                    loadHistory();
+                }
+            }
+        } catch (err) {
+            console.warn(`[POLLING] Tentative ${attempts} échouée :`, err);
+        }
+
+        if (attempts >= maxRetries) {
+            clearInterval(interval);
+            const b = document.getElementById('msg-banner');
+            if (b) b.remove();
+            showMessage("Calcul en cours — consultez votre historique dans quelques instants.", 'info');
+        }
+    }, 3000);
+}
+
+
+// AFFICHAGE RÉSULTAT
+function displayResult(data) {
+    const existing = document.getElementById('result-section');
+    if (existing) existing.remove();
+
+    const section = document.createElement('div');
+    section.id    = 'result-section';
+
+    section.innerHTML = `
+        <h2>Résultat — Soumission #${data.submission_id}</h2>
+        <table>
+            <thead><tr><th>Métrique</th><th>Valeur</th></tr></thead>
+            <tbody>
+                <tr><td>Score total pondéré</td><td><strong>${data.total_score.toFixed(4)}</strong></td></tr>
+                <tr><td>Instances valides</td><td>${data.total_valid_instances}</td></tr>
+                <tr><td>Faisabilité complète</td><td>${data.is_fully_feasible ? "Oui" : "Non"}</td></tr>
+            </tbody>
+        </table>
+
+        ${data.processor_info ? `
+        <details style="margin-top:15px;">
+            <summary style="color:#c0392b;">Rapport de structure du ZIP</summary>
+            <pre style="
+                background:#fdf2f2; border:1px solid #f5b7b1; border-radius:4px;
+                padding:12px; font-size:13px; line-height:1.6;
+                white-space:pre-wrap; word-break:break-word; margin-top:8px;
+            ">${data.processor_info}</pre>
+        </details>` : ''}
+
+        <details style="margin-top:15px;">
+            <summary>Détail par instance (${data.instances_details.length})</summary>
+            <table style="margin-top:10px; font-size:15px;">
+                <thead>
+                    <tr>
+                        <th>Instance</th><th>Catégorie</th><th>Faisable</th>
+                        <th>Distance</th><th>Coût transition</th><th>Erreurs</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.instances_details.map(r => `
+                        <tr ${!r.feasible ? 'style="background:#fdf2f2;"' : ''}>
+                            <td>${r.instance}</td>
+                            <td>${r.category}</td>
+                            <td>${r.feasible ? "✅" : "❌"}</td>
+                            <td>${r.distance ?? "—"}</td>
+                            <td>${r.transition_cost ?? "—"}</td>
+                            <td style="color:#c0392b; font-size:13px;">
+                                ${r.errors.length > 0 ? r.errors.join('<br>') : "—"}
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </details>
+    `;
+
+    const uploadCard = document.querySelector('.upload-card');
+    uploadCard.insertAdjacentElement('afterend', section);
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ══════════════════════════════════════════════════════════
+// HISTORIQUE
+
+
+async function loadHistory() {
+    const token = localStorage.getItem('token');
+    const res   = await fetch(`${API_URL}/scoring/history`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!res.ok) { if (res.status === 401) logout(); return; }
+
+    const data = await res.json();
+    document.getElementById('team-name-display').innerText = data.team_name;
+
+    const navTeam = document.getElementById('nav-team-name');
+    if (navTeam) navTeam.innerText = `👤 ${data.team_name}`;
+
+    const tbody = document.getElementById('history-body');
+
+    if (data.history.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align:center; color:#888; font-style:italic;">
+                    Aucune soumission pour l'instant.
+                </td>
+            </tr>`;
+        return;
+    }
+
+    tbody.innerHTML = data.history.map(sub => `
+        <tr>
+            <td>Soumission ${sub.submission_number}</td>
+            <td>${formatDate(sub.submitted_at)}</td>
+            <td><strong>${sub.score.toFixed(2)}</strong></td>
+            <td>${sub.valid_instances}</td>
+            <td>
+                ${sub.is_fully_feasible
+                    ? '<span class="badge badge-ok">Validé</span>'
+                    : '<span class="badge badge-err">Incomplet</span>'
+                }
+            </td>
+            <td>
+                <button
+                    id="details-btn-${sub.submission_id}"
+                    class="btn-details"
+                    onclick="loadAndDisplayDetails(${sub.submission_id})"
+                >Détails</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+
+// DÉTAILS DEPUIS L'HISTORIQUE
+async function loadAndDisplayDetails(submissionId) {
+    const token = localStorage.getItem('token');
+    const btn   = document.getElementById(`details-btn-${submissionId}`);
+
+    if (btn) { btn.disabled = true; btn.innerText = "Chargement…"; }
+
+    try {
+        const res = await fetch(`${API_URL}/scoring/result/${submissionId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.status === 401) { logout(); return; }
+        if (res.status === 403) { showMessage("Accès non autorisé à cette soumission.", 'error'); return; }
+        if (!res.ok)            { showMessage("Impossible de charger les détails.", 'error'); return; }
+
+        const data = await res.json();
+        console.log(`[DETAILS #${submissionId}] is_ready=${data.is_ready}`, data);
+
+        if (!data.is_ready) {
+            showMessage("Cette soumission est encore en cours de traitement. Réessayez dans quelques instants.", 'info');
+            return;
+        }
+        displayResult(data);
+
+    } catch (err) {
+        showMessage("Erreur réseau lors du chargement des détails.", 'error');
+        console.error(err);
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerText = "Détails"; }
+    }
+}
+
+
+// SESSION
+function showUserSection() {
+    document.getElementById('auth-section').style.display = 'none';
+    document.getElementById('user-section').style.display = 'block';
+    document.getElementById('nav-logout-li').style.display = 'inline';
+    document.getElementById('nav-team-name').style.display = 'inline';
+    loadHistory();
+}
+
+function logout() {
+    localStorage.removeItem('token');
+    window.location.replace(window.location.pathname);
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    if (localStorage.getItem('token')) {
+        showUserSection();
+    }
+});

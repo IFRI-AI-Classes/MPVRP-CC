@@ -1,5 +1,4 @@
 from pydantic import BaseModel, Field, EmailStr
-from datetime import datetime
 from typing import Optional
 
 
@@ -22,35 +21,31 @@ class InstanceGenerationRequest(BaseModel):
 
 
 class InstanceGenerationResponse(BaseModel):
-    """Réponse de génération d'instance avec le contenu du fichier"""
     filename: str
     content: str
 
 
 class SolutionVerificationResponse(BaseModel):
-    """Réponse de vérification de solution"""
     feasible: bool
     errors: list[str]
     metrics: dict
+
 
 class UserBase(BaseModel):
     team_name: str
     email: EmailStr
 
 class UserCreate(UserBase):
-    """Schema pour la création d'équipe."""
     password: str
 
 class UserResponse(UserBase):
-    """Retourner les infos de l'utilisateur sans le password."""
     id: int
     class Config:
         from_attributes = True
 
 
-#SCHÉMAS SCORING & RESULTS
+#SCORING & RESULTS
 class InstanceDetail(BaseModel):
-    """Details d'une unique instance soumise."""
     instance: str
     category: str
     feasible: bool
@@ -59,41 +54,46 @@ class InstanceDetail(BaseModel):
     errors: list[str]
 
 class SubmissionResultResponse(BaseModel):
-    """Détails complets des 150 instances d'une soumission."""
     submission_id: int
-    submitted_at: datetime
+    submitted_at: str
     total_score: float
     is_fully_feasible: bool
+    total_valid_instances: str
+    total_valid_instances_per_category: Optional[str] = None
+    is_ready: bool
+    processor_info: Optional[str] = None    #rapport de structure du ZIP
     instances_details: list[InstanceDetail]
 
     class Config:
         from_attributes = True
 
 
-# SCHÉMAS HISTORIQUE & LEADERBOARD
+# HISTORIQUE
 class HistoryEntry(BaseModel):
-    """Résumé des soumissions passées"""
     submission_id: int
-    submitted_at: datetime
+    submission_number: int                   
+    submitted_at: str                      
     score: float
     valid_instances: str
     is_fully_feasible: bool
 
 class TeamHistoryResponse(BaseModel):
-    """Réponse de l'API pour l'historique complet d'une équipe."""
     team_name: str
     total_submissions: int
     history: list[HistoryEntry]
 
+
+#LEADERBOARD 
+
 class LeaderboardEntry(BaseModel):
-    """Entrée pour le leaderboard."""
     rank: int
     team: str
     score: float
     instances_validated: str
+    last_submission: str # Important que ce soit en str, on envoie .isoformat()
 
 
-#SCHÉMAS JWT(Json Web Token)
+# JWT 
 class Token(BaseModel):
     access_token: str
     token_type: str

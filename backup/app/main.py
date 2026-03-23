@@ -1,12 +1,39 @@
+import os
+import shutil
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from backup.database.db import engine, get_db
 import backup.database.models_db as models
-
 from backup.app.routes import generator, model, scoring, leaderboard, auth
-#On devra import scoring dans les routes aussi
 
-models.Base.metadata.create_all(bind=engine)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Remplace les @app.on_event("startup"/"shutdown") dépréciés depuis FastAPI 0.93.
+
+    Au démarrage :
+      - Crée les tables si elles n'existent pas
+      - Nettoie le dossier temp/ des fichiers ZIP orphelins
+        (laissés par un crash serveur lors d'un traitement précédent)
+
+    """
+    # Création des tables
+    models.Base.metadata.create_all(bind=engine)
+
+    # Nettoyage de temp/ au démarrage
+    temp_dir = "temp"
+    if os.path.exists(temp_dir):
+        orphans = os.listdir(temp_dir)
+        if orphans:
+            print(f"[STARTUP] Nettoyage de {len(orphans)} fichier(s) orphelin(s) dans temp/")
+            shutil.rmtree(temp_dir)
+    os.makedirs(temp_dir, exist_ok=True)
+
+    yield  
 
 app = FastAPI(
     title="MPVRP-CC API",
