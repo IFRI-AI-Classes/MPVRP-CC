@@ -211,3 +211,5 @@ __marimo__/
 
 # vscode
 .vscode/
+
+backup/core/model/modelisation.py
