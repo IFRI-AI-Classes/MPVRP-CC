@@ -21,7 +21,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-ALLOWED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000", FRONTEND_PROD_URL]
+ALLOWED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000", "https://ifri-ai-classes.github.io", FRONTEND_PROD_URL]
 logger.info("CORS allow-list configured with %s origin(s)", len(ALLOWED_ORIGINS))
 
 
