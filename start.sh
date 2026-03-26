@@ -12,6 +12,7 @@ WORKERS="${WORKERS:-2}"
 
 # Export DATABASE_URL (uses existing value if already set).
 export DATABASE_URL="${DATABASE_URL:-sqlite:///./mpvrp_scoring.db}"
+export FRONTEND_ALLOWED_ORIGINS="${FRONTEND_ALLOWED_ORIGINS:-https://ifri-ai-classes.github.io,https://ifri-ai-classes.github.io/MPVRP-CC,https://ifri-ai-classes.github.io/MPVRP-CC/pages}"
 
 # Require stable secret key in environments with external users.
 # Generate and export a fresh SECRET_KEY at launch time.
