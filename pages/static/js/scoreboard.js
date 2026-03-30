@@ -1,4 +1,4 @@
-const API_URL = window.APP_CONFIG?.API_URL || "http://127.0.0.1:8000";
+const API_URL = window.APP_CONFIG?.API_URL;
 
 // ── Nav mobile ───────────────────────────────────────────
 document.getElementById('mobile-menu').addEventListener('click', () => {

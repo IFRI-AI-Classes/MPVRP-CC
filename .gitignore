@@ -219,3 +219,5 @@ backup/core/model/modelisation.py
 mpvrp_scoring.db
 
 temp/
+
+pages/static/js/config.js
