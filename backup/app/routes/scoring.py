@@ -11,7 +11,7 @@ from backup.core.scoring.score_evaluation import process_full_submission
 from backup.database.notion import upsert_submission
 from backup.app.schemas import SubmissionResultResponse
 
-router = APIRouter(prefix="/scoring", tags=["Scoring"], include_in_schema=True)
+router = APIRouter(prefix="/scoring", tags=["Scoring"], include_in_schema=False)
 
 DATA_SOURCE_ID = os.getenv("NOTION_DATA_SOURCE_ID")
 

@@ -17,10 +17,10 @@ INSTANCES_ROOT = os.path.join(BASE_DIR, "data", "instances")
 
 
 def process_full_submission(zip_path: str) -> dict:
-    """Évalue une soumission ZIP et retourne un dict de résultats.
+    """Evaluates a ZIP submission and returns a results dictionary.
 
-    :param zip_path: Chemin vers le fichier ZIP soumis.
-    :return: Dictionnaire avec score, feasibility, détails par instance.
+    :param zip_path: Path to the submitted ZIP file.
+    :return: Dictionary with score, feasibility, and details per instance.
     """
     extract_path = f"temp_extract_{os.path.basename(zip_path)}"
     total_valid_instances = 0
@@ -29,15 +29,15 @@ def process_full_submission(zip_path: str) -> dict:
 
     try:
         if not os.path.exists(zip_path):
-            return _failed_result(f"Fichier ZIP introuvable : {zip_path}")
+            return _failed_result(f"ZIP file not found: {zip_path}")
 
         try:
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(extract_path)
         except zipfile.BadZipFile:
-            return _failed_result("Le fichier soumis n'est pas un ZIP valide.")
+            return _failed_result("The submitted file is not a valid ZIP file.")
         except Exception as e:
-            return _failed_result(f"Erreur lors de l'extraction : {e}")
+            return _failed_result(f"Error during extraction: {e}")
 
         category_dirs, discovery_warnings = _discover_category_dirs(extract_path)
         structure_report = _validate_zip_structure(extract_path, category_dirs, discovery_warnings)
@@ -70,7 +70,7 @@ def process_full_submission(zip_path: str) -> dict:
                 feasible = False
 
                 if not cat_info.get("present", False):
-                    errors = [f"Catégorie {category} absente du ZIP."]
+                    errors = [f"Category {category} missing from ZIP."]
                 else:
                     selected_solution = files_by_instance.get(num_str)
                     sol_path = os.path.join(str(category_path), selected_solution) if category_path and selected_solution else None
@@ -78,9 +78,9 @@ def process_full_submission(zip_path: str) -> dict:
                     inst_path = os.path.join(instance_dir, inst_filename) if inst_filename else None
 
                     if not inst_filename:
-                        errors = [f"Instance officielle {num_str} introuvable sur le serveur."]
+                        errors = [f"Official instance {num_str} not found on server."]
                     elif not sol_path or not os.path.exists(sol_path):
-                        errors = [f"Aucun fichier solution valide trouvé pour l'instance {num_str}."]
+                        errors = [f"No valid solution file found for instance {num_str}."]
                     else:
                         try:
                             from backup.core.model.feasibility import verify_solution
@@ -93,7 +93,7 @@ def process_full_submission(zip_path: str) -> dict:
                                 total_valid_instances += 1
                                 results_per_category[category] += 1
                         except Exception as e:
-                            errors = [f"Erreur technique lors du parsing : {e}"]
+                            errors = [f"Technical error during parsing: {e}"]
 
                 instance_score = (
                     metrics.get("distance_total", 0) + metrics.get("total_switch_cost", 0)
@@ -125,7 +125,7 @@ def process_full_submission(zip_path: str) -> dict:
         }
 
     except Exception as fatal_e:
-        return _failed_result(f"Erreur inattendue : {fatal_e}")
+        return _failed_result(f"Unexpected error: {fatal_e}")
 
     finally:
         if os.path.exists(extract_path):

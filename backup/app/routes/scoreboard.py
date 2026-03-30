@@ -6,7 +6,7 @@ from backup.database.notion import get_all_entries, _extract_value
 from backup.app.schemas import LeaderboardEntry
 
 
-router = APIRouter(prefix="/scoreboard", tags=["scoreboard"], include_in_schema=True)
+router = APIRouter(prefix="/scoreboard", tags=["scoreboard"], include_in_schema=False)
 
 DATA_SOURCE_ID = os.getenv("NOTION_DATA_SOURCE_ID")
 
