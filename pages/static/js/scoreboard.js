@@ -1,42 +1,14 @@
-const API_URL = window.APP_CONFIG?.API_URL || "https://mpvrppythonapi.pinite37.me";
+const API_URL = window.APP_CONFIG?.API_URL || "http://127.0.0.1:8000";
 
 // ── Nav mobile ───────────────────────────────────────────
 document.getElementById('mobile-menu').addEventListener('click', () => {
     document.getElementById('nav-links').classList.toggle('active');
 });
 
-// ── Session (logout conditionnel) ────────────────────────
+// ── Init ─────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
-    if (localStorage.getItem('token')) {
-        // On récupère le nom d'Team depuis l'historique pour l'afficher dans la nav
-        fetchTeamName();
-        document.getElementById('nav-logout-li').style.display = 'inline';
-    }
     loadLeaderboard();
 });
-
-async function fetchTeamName() {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    try {
-        const res = await fetch(`${API_URL}/scoring/history`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
-            const data = await res.json();
-            const el = document.getElementById('nav-team-name');
-            el.innerText = `👤 ${data.team_name}`;
-            el.style.display = 'inline';
-        } else if (res.status === 401) {
-            logout();
-        }
-    } catch (_) {}
-}
-
-function logout() {
-    localStorage.removeItem('token');
-    window.location.replace(window.location.pathname);
-}
 
 // ── Leaderboard ──────────────────────────────────────────
 async function loadLeaderboard() {
@@ -53,7 +25,7 @@ async function loadLeaderboard() {
     refreshBtn.disabled = true;
 
     try {
-        const res = await fetch(`${API_URL}/scoreboard/`);
+        const res = await fetch(`${API_URL}/scoreboard`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const data = await res.json();

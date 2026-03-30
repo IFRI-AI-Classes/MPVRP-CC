@@ -27,9 +27,6 @@
             <li><a href="#tools">Outils</a></li>
             <li><a href="pages/scoreboard.html">Scoreboard</a></li>
             <li><a href="pages/submission.html" class="nav-cta">Submission</a></li>
-            <li id="nav-logout" style="display:none;">
-                <a href="#" onclick="logoutFromIndex()" style="color:#e74c3c;">Logout</a>
-            </li>
         </ul>
     </nav>
 </header>
@@ -133,18 +130,6 @@
     mobileMenu.addEventListener('click', () => navLinks.classList.toggle('active'));
     document.querySelectorAll('.nav-links a').forEach(link => {
         link.addEventListener('click', () => navLinks.classList.remove('active'));
-    });
-
-    // ── Logout conditionnel ───────────────────────────────────
-    function logoutFromIndex() {
-        localStorage.removeItem('token');
-        window.location.replace(window.location.pathname);
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-        if (localStorage.getItem('token')) {
-            document.getElementById('nav-logout').style.display = 'inline';
-        }
     });
 </script>
 
