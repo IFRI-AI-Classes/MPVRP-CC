@@ -151,7 +151,10 @@ def _extract_value(prop: dict):
     elif ptype == "select":
         sel = prop.get("select")
         return sel["name"] if sel else None
-    elif ptype in ("date", "last_edited_time", "created_time"):
+    elif ptype == "date":
+        val = prop.get("date")
+        return val["start"] if val else None
+    elif ptype in ("last_edited_time", "created_time"):
         return prop.get(ptype)
     return None
 

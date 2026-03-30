@@ -2,6 +2,7 @@ import json
 import os
 import shutil
 import uuid
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, UploadFile, File, BackgroundTasks, HTTPException, Form
@@ -37,20 +38,23 @@ async def submit_solutions_endpoint(
 
     # Évaluation synchrone — le résultat est retourné directement
     result = process_full_submission(temp_path)
+    submitted_at = datetime.now(timezone.utc).isoformat()
+    submission_id = int(uuid.uuid4().int % 10**12)
 
     # Upsert vers Notion en arrière-plan (non bloquant pour l'utilisateur)
-    background_tasks.add_task(
-        upsert_submission,
-        data_source_id=DATA_SOURCE_ID,
-        email=email,
-        score=result["total_weighted_score"],
-        feasible_solutions=result["total_feasible_count"],
-        name=name,
-    )
+    if DATA_SOURCE_ID:
+        background_tasks.add_task(
+            upsert_submission,
+            data_source_id=DATA_SOURCE_ID,
+            email=email,
+            score=result["total_weighted_score"],
+            feasible_solutions=result["total_feasible_count"],
+            name=name,
+        )
 
     return {
-        "status": "Complete",
-        "team": name or email,
+        "submission_id": submission_id,
+        "submitted_at": submitted_at,
         "total_score": round(result["total_weighted_score"], 2),
         "is_fully_feasible": result["is_fully_feasible"],
         "total_valid_instances": f"{result['total_feasible_count']}/150",

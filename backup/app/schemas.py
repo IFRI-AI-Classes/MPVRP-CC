@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field
 
 
 class InstanceGenerationRequest(BaseModel):
@@ -56,23 +56,11 @@ class SubmissionResultResponse(BaseModel):
     class Config:
         from_attributes = True
 
-class HistoryEntry(BaseModel):
-    submission_id: int
-    submission_number: int                   
-    submitted_at: str                      
-    score: float
-    valid_instances: str
-    is_fully_feasible: bool
-
-class TeamHistoryResponse(BaseModel):
-    team_name: str
-    total_submissions: int
-    history: list[HistoryEntry]
 
 class LeaderboardEntry(BaseModel):
     rank: int
     team: str
     score: float
     instances_validated: str
-    last_submission: str
+    last_submission: Optional[str] = None
 
