@@ -34,13 +34,15 @@
 <section id="introduction">
     <h2>Introduction</h2>
     <p>
-        Logistics optimization remains a major challenge for companies worldwide. Efficient distribution of goods directly impacts operational costs, customer satisfaction, and environmental footprint. Among the various optimization problems studied in operations research, vehicle routing problems (VRP) occupy a central place due to their practical relevance and computational complexity.
+        The distribution of multiple products across logistics networks represents a major economic and environmental challenge in industries such as petroleum, chemicals, and food supply. Beyond transportation expenses, logistics operators must also account for operational costs related to fleet maintenance and product management between consecutive distribution rounds. These additional costs significantly influence planning decisions but are rarely considered in classical vehicle routing formulations.
     </p>
+
     <p>
-        Each industrial sector introduces its own specific constraints. In petroleum distribution, for instance, tanker trucks must deliver multiple fuel types to service stations while managing product compatibility within their compartments. Changing the product carried by a vehicle requires tank cleaning, which incurs additional costs and time.
+        We introduce the <strong>Multi-Product Vehicle Routing Problem with Changeover Costs (MPVRP-CC)</strong>, a new variant of the Vehicle Routing Problem designed to incorporate these operational constraints into multi-product distribution planning. In particular, the model captures the cost incurred when a vehicle changes the product it carries between successive tours, reflecting cleaning, maintenance, or reconfiguration operations required before transporting another product.
     </p>
+
     <p>
-        We present the <strong>Multi-Product Vehicle Routing Problem with Changeover Cost (MPVRP-CC)</strong>, a variant of the classic VRP tailored to these challenges. The MPVRP-CC aims to organize the efficient distribution of multiple product types from a set of depots to a network of service stations, while accounting for the changeover cost when a vehicle switches between products.
+        By explicitly integrating changeover costs into routing decisions, the MPVRP-CC provides a more realistic framework for optimizing distribution operations in sectors where vehicles handle multiple product types. The objective is to minimize the overall distribution cost while ensuring efficient deliveries from depots to customers under practical operational constraints.
     </p>
 </section>
 
@@ -48,11 +50,11 @@
     <h2>Documentation</h2>
     <p>
         Detailed problem specifications and instance structures can be found in the
-        <a href="https://raw.githubusercontent.com/IFRI-AI-Classes/MPVRP-CC/main/docs/problem_definition.pdf" target="_blank">overview</a>
+        <a href="docs/problem_definition.pdf" target="_blank">overview</a>
         and
-        <a href="https://raw.githubusercontent.com/IFRI-AI-Classes/MPVRP-CC/main/docs/instance_description.pdf" target="_blank">data format</a>
+        <a href="docs/instance_description.pdf" target="_blank">data format</a>
         sections, respectively. Our dataset includes 50 instances partitioned into small, medium, and large categories to reflect varying scales of stations, depots, and product quantities. Although reference solutions are not included, the expected submission format is outlined
-        <a href="https://raw.githubusercontent.com/IFRI-AI-Classes/MPVRP-CC/main/docs/solution_description.pdf" target="_blank">here</a>.
+        <a href="docs/solution_description.pdf" target="_blank">here</a>.
     </p>
 </section>
 
@@ -93,9 +95,9 @@
 
     <p>Download instances:</p>
     <div class="download-links">
-        <a href="https://raw.githubusercontent.com/IFRI-AI-Classes/MPVRP-CC/main/data/zips/small.zip">Small instances</a>
-        <a href="https://raw.githubusercontent.com/IFRI-AI-Classes/MPVRP-CC/main/data/zips/medium.zip">Medium instances</a>
-        <a href="https://raw.githubusercontent.com/IFRI-AI-Classes/MPVRP-CC/main/data/zips/large.zip">Large instances</a>
+        <a href="data/zips/small.zip">Small instances</a>
+        <a href="data/zips/medium.zip">Medium instances</a>
+        <a href="data/zips/large.zip">Large instances</a>
     </div>
 </section>
 
@@ -111,7 +113,7 @@
 </section>
 
 <footer>
-    <p>Laboratory of Research in Computer Science and Applications (LRSIA), 2026</p>
+    <p><a href="https://github.com/LRSIA-Ratheil-Research-Team" target="_blank">Ratheil Research Team</a>, Laboratory of Research in Computer Science and Applications (LRSIA), 2026</p>
 </footer>
 
 <script>
