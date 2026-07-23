@@ -163,7 +163,6 @@ MPVRP-CC/
    ```bash
    # Example .env
    SECRET_KEY=your-secret-key-here
-   DATABASE_URL=sqlite:///./mpvrp_scoring.db
    ```
 
 ---
@@ -176,7 +175,6 @@ From the project root, launch the API with `uv`:
 
 ```bash
 export SECRET_KEY=your-secret-key-here
-export DATABASE_URL=${DATABASE_URL:-sqlite:///./mpvrp_scoring.db}
 uv run uvicorn backup.app.main:app --host 0.0.0.0 --port 8000 --workers 2
 ```
 
@@ -193,103 +191,6 @@ Build and run with Docker:
 docker build -t mpvrp-cc .
 docker run --rm -p 8000:8000 -e SECRET_KEY=your-secret-key-here mpvrp-cc
 ```
-
-### API Endpoints
-
-#### 1. **Health Check**
-```bash
-GET /health
-```
-Returns the API health status.
-
-#### 2. **Instance Generation**
-```bash
-POST /generator/generate
-Content-Type: application/json
-
-{
-  "id_instance": "01",
-  "nb_vehicules": 5,
-  "nb_depots": 2,
-  "nb_garages": 1,
-  "nb_stations": 10,
-  "nb_produits": 3,
-  "max_coord": 100.0,
-  "min_capacite": 10000,
-  "max_capacite": 25000,
-  "min_transition_cost": 10.0,
-  "max_transition_cost": 80.0,
-  "min_demand": 500,
-  "max_demand": 5000,
-  "seed": 42
-}
-```
-
-**Response**:
-```json
-{
-  "filename": "MPVRP_01_s10_d2_p3.dat",
-  "content": "instance file content..."
-}
-```
-
-#### 3. **Solution Verification**
-```bash
-POST /model/verify
-Content-Type: application/json
-
-{
-  "instance": "instance content...",
-  "solution": "solution content..."
-}
-```
-
-**Response**:
-```json
-{
-  "feasible": true,
-  "errors": [],
-  "metrics": {
-    "total_cost": 5432.10,
-    "vehicle_count": 5,
-    "utilization": 0.85
-  }
-}
-```
-
-#### 4. **Submit Solutions for Scoring**
-```bash
-POST /scoring/submit/{user_id}
-Content-Type: multipart/form-data
-
-Files: 150 solution files
-```
-
-#### 5. **Get Scoring Results**
-```bash
-GET /scoring/result/{submission_id}
-```
-
-**Response**: Detailed scores and feasibility status for each instance.
-
-#### 6. **Get Submission History**
-```bash
-GET /scoring/history/{user_id}
-```
-
-#### 7. **Get Scoreboard**
-```bash
-GET /scoreboard/
-```
-
-**Response**: Current rankings with best submissions per team.
-
-#### 8. **Authentication**
-- `POST /auth/register`: Register new team
-- `POST /auth/login`: Login with credentials
-- `POST /auth/logout`: Logout
-
-For complete API documentation, visit `/docs` when the server is running.
 
 ### Web Interface
 

@@ -538,9 +538,18 @@ function initData() {
     stationDemandsPerProduct = instance.stationDemandsPerProduct || {};
     stationDeliveriesPerProduct = {};
 
-    // Initialize station deliveries
-    Object.keys(stationDemandsPerProduct).forEach(stationId => {
-        stationDeliveriesPerProduct[stationId] = stationDemandsPerProduct[stationId].map(() => 0);
+    // Initialize station deliveries for all stations
+    Object.keys(instance.locations || {}).forEach(locId => {
+        if (locId.startsWith('S')) {
+            if (!stationDemandsPerProduct[locId]) {
+                const numProds = instance.num_products || 1;
+                const totalD = stationDemands[locId] || 0;
+                const arr = new Array(numProds).fill(0);
+                arr[0] = totalD;
+                stationDemandsPerProduct[locId] = arr;
+            }
+            stationDeliveriesPerProduct[locId] = stationDemandsPerProduct[locId].map(() => 0);
+        }
     });
 
     // Reset pan/zoom
@@ -733,22 +742,14 @@ function drawGrid() {
     }
 }
 
-function getStationSatisfaction(stationId, currentProgress) {
-    if (!stationDemands[stationId]) return 1;
+function getStationSatisfaction(stationId) {
+    const demand = stationDemands[stationId] || 0;
+    if (demand <= 0) return 1;
 
-    let visitsSoFar = 0;
-    const totalVisits = stationVisits[stationId] || 1;
+    const deliveries = stationDeliveriesPerProduct[stationId] || [];
+    const totalDelivered = deliveries.reduce((sum, d) => sum + d, 0);
 
-    trucks.forEach(t => {
-        const completedSegs = Math.floor(Math.min(currentProgress, t.segments.length));
-        for (let i = 0; i < completedSegs; i++) {
-            if (t.segments[i][1] === stationId) {
-                visitsSoFar++;
-            }
-        }
-    });
-
-    return Math.min(1, visitsSoFar / totalVisits);
+    return Math.min(1, totalDelivered / demand);
 }
 
 function drawNode(id, type) {
@@ -794,7 +795,7 @@ function drawNode(id, type) {
 
     // Demand bar for stations
     if (type === 'station') {
-        const satisfaction = getStationSatisfaction(id, progress);
+        const satisfaction = getStationSatisfaction(id);
         const demand = stationDemands[id] || 0;
 
         if (demand > 0) {
@@ -803,6 +804,9 @@ function drawNode(id, type) {
             const barX = x - barWidth / 2;
             const barY = y + 48;
 
+            const deliveries = stationDeliveriesPerProduct[id] || [];
+            const totalDelivered = deliveries.reduce((sum, d) => sum + d, 0);
+
             // Background
             ctx.fillStyle = getThemeColor('--input-bg');
             ctx.beginPath();
@@ -810,16 +814,16 @@ function drawNode(id, type) {
             ctx.fill();
 
             // Progress
-            const fillColor = satisfaction >= 1 ? '#34d399' : '#fbbf24';
+            const fillColor = satisfaction >= 0.999 ? '#34d399' : '#fbbf24';
             ctx.fillStyle = fillColor;
             ctx.beginPath();
-            ctx.roundRect(barX, barY, barWidth * satisfaction, barHeight, 3);
+            ctx.roundRect(barX, barY, barWidth * Math.max(0, satisfaction), barHeight, 3);
             ctx.fill();
 
             // Text
             ctx.font = '500 9px Lato';
             ctx.fillStyle = getThemeColor('--text-dim');
-            ctx.fillText(`${Math.floor(demand * satisfaction)}/${demand}`, x, barY + 16);
+            ctx.fillText(`${Math.round(totalDelivered)}/${Math.round(demand)}`, x, barY + 16);
         }
     }
 }
@@ -1088,13 +1092,16 @@ function calculateCurrentExchangesAndDeliveries() {
 
     trucks.forEach((t, truckIdx) => {
         const vehicleKey = t.id;
-        const completedSegs = Math.floor(Math.min(progress, t.segments.length));
+        const maxSegs = t.segments.length;
+        const currentProgress = Math.min(progress, maxSegs);
         const vehicleProducts = productLines[vehicleKey] || [];
         const vehicleMeta = segmentMeta[vehicleKey] || [];
 
         let lastProduct = null;
 
-        for (let i = 0; i < completedSegs; i++) {
+        for (let i = 0; i < maxSegs; i++) {
+            if (i >= currentProgress) break;
+
             const toNode = t.segments[i][1];
             const segMeta = vehicleMeta[i] || {};
             const fromProduct = normalizeProductIndex(
@@ -1107,26 +1114,36 @@ function calculateCurrentExchangesAndDeliveries() {
                 productBase,
                 numProducts
             );
-            const activeProduct = fromProduct ?? toProduct;
+            const activeProduct = (fromProduct ?? toProduct) ?? 0;
+
+            // Fraction of segment completed: 1 if i < Math.floor(currentProgress), else (currentProgress - i)
+            const frac = (i < Math.floor(currentProgress)) ? 1 : (currentProgress - i);
 
             // Track station deliveries for the single active product of that segment.
             if (toNode && toNode.startsWith('S')) {
                 const stationId = toNode;
-                if (stationDeliveriesPerProduct[stationId] && activeProduct !== null) {
-                    const stationDemand = stationDemandsPerProduct[stationId] || [];
-                    const demandForProduct = stationDemand[activeProduct] || 0;
-                    if (demandForProduct > 0) {
-                        const explicitDelivery = Number(segMeta.deliveryQty || 0);
-                        const deliveryQty = explicitDelivery > 0
-                            ? explicitDelivery
-                            : (demandForProduct / Math.max(1, stationVisits[stationId] || 1));
-                        stationDeliveriesPerProduct[stationId][activeProduct] += deliveryQty;
+                if (!stationDeliveriesPerProduct[stationId]) {
+                    const numProds = instance.num_products || 1;
+                    stationDeliveriesPerProduct[stationId] = new Array(numProds).fill(0);
+                }
+                const stationDemand = stationDemandsPerProduct[stationId] || [];
+                const demandForProduct = stationDemand[activeProduct] || 0;
+                const explicitDelivery = Number(segMeta.deliveryQty || 0);
+
+                if (explicitDelivery > 0 || demandForProduct > 0) {
+                    const deliveryQty = explicitDelivery > 0
+                        ? explicitDelivery
+                        : (demandForProduct / Math.max(1, stationVisits[stationId] || 1));
+                    if (stationDeliveriesPerProduct[stationId][activeProduct] !== undefined) {
+                        stationDeliveriesPerProduct[stationId][activeProduct] += deliveryQty * frac;
+                    } else {
+                        stationDeliveriesPerProduct[stationId][0] = (stationDeliveriesPerProduct[stationId][0] || 0) + deliveryQty * frac;
                     }
                 }
             }
 
-            // Count exchanges only when product actually changes across a depot segment.
-            if (toNode && toNode.startsWith('D')) {
+            // Count exchanges only when product actually changes across a depot segment (for completed segments).
+            if (i < Math.floor(currentProgress) && toNode && toNode.startsWith('D')) {
                 if (fromProduct !== null && toProduct !== null && fromProduct !== toProduct) {
                     currentExchanges++;
                     const swapKey = `${vehicleKey}-${i}`;
