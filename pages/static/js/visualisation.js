@@ -220,7 +220,7 @@ function handleFile(file, type) {
             else solution = previousValue;
             try { initData(); resize(); } catch (restoreError) { console.error(restoreError); }
             showFileError(file.name, err);
-            console.error(err);
+            console.warn(`Could not load ${file.name}: ${err.message}`);
         }
     };
     reader.readAsText(file);
@@ -472,8 +472,13 @@ function parseDatSolution(text) {
             if (productStates.some(product => product === null)) {
                 throw parseError(`product line for vehicle ${vehicleId} contains an invalid product state.`, lineNumberAt(lineIdx - 1));
             }
-            if (productStates.length !== routeParts.length) {
-                throw parseError(`vehicle ${vehicleId} has ${routeParts.length} route nodes but ${productStates.length} product states.`, lineNumberAt(lineIdx - 1));
+            const hasStatePerNode = productStates.length === routeParts.length;
+            const hasStatePerSegment = productStates.length === routeParts.length - 1;
+            if (!hasStatePerNode && !hasStatePerSegment) {
+                throw parseError(
+                    `vehicle ${vehicleId} has ${routeParts.length} route nodes; expected ${routeParts.length} product states (per node) or ${routeParts.length - 1} (per segment), but found ${productStates.length}.`,
+                    lineNumberAt(lineIdx - 1)
+                );
             }
             const segments = [];
             const vehicleLoads = []; // Track loads for this vehicle
@@ -963,24 +968,97 @@ function getThemeColor(varName) {
     return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
 }
 
-function drawGrid() {
-    const gridSize = 40;
-    ctx.strokeStyle = getThemeColor('--grid-color');
+function drawMapBackground() {
+    // A lightweight, deterministic basemap keeps the visualizer self-contained
+    // while giving the routes a more concrete geographical setting.
+    const land = ctx.createLinearGradient(0, 0, width, height);
+    land.addColorStop(0, '#eef4e5');
+    land.addColorStop(0.55, '#f5f1df');
+    land.addColorStop(1, '#e9f1df');
+    ctx.fillStyle = land;
+    ctx.fillRect(0, 0, width, height);
+
+    // Agricultural and wooded patches.
+    const terrainPatches = [
+        [.12, .18, .2, .13, '#d9e9c5'], [.76, .17, .25, .15, '#d2e4bd'],
+        [.22, .76, .28, .18, '#e3dcb8'], [.78, .72, .22, .18, '#d7e8c7'],
+        [.48, .43, .16, .11, '#e5dfbf']
+    ];
+    terrainPatches.forEach(([x, y, radiusX, radiusY, color], index) => {
+        ctx.save();
+        ctx.translate(width * x, height * y);
+        ctx.rotate((index - 2) * .18);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, width * radiusX, height * radiusY, 0, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.restore();
+    });
+
+    // A river and its bank, positioned away from the center of most networks.
+    const riverPath = new Path2D();
+    riverPath.moveTo(width * .82, -20);
+    riverPath.bezierCurveTo(width * .68, height * .2, width * .92, height * .48, width * .72, height * .68);
+    riverPath.bezierCurveTo(width * .62, height * .79, width * .68, height * .93, width * .58, height + 20);
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(169, 205, 210, .5)';
+    ctx.lineWidth = Math.max(22, width * .026);
+    ctx.stroke(riverPath);
+    ctx.strokeStyle = 'rgba(122, 184, 204, .72)';
+    ctx.lineWidth = Math.max(13, width * .016);
+    ctx.stroke(riverPath);
+
+    // Small tree clusters provide visual scale without competing with nodes.
+    const treeClusters = [[.08,.42], [.15,.47], [.89,.3], [.92,.35], [.42,.1], [.47,.12], [.33,.88], [.38,.86]];
+    treeClusters.forEach(([x, y], index) => {
+        const cx = width * x;
+        const cy = height * y;
+        for (let tree = 0; tree < 4; tree++) {
+            const angle = tree * 1.7 + index;
+            ctx.beginPath();
+            ctx.arc(cx + Math.cos(angle) * 9, cy + Math.sin(angle) * 7, 4.5, 0, Math.PI * 2);
+            ctx.fillStyle = tree % 2 ? 'rgba(72, 122, 65, .32)' : 'rgba(104, 145, 76, .38)';
+            ctx.fill();
+        }
+    });
+
+    drawRoadNetwork();
+}
+
+function drawRoadNetwork() {
+    const roadSegments = new Map();
+    trucks.forEach(truck => {
+        truck.segments.forEach(([from, to]) => {
+            const key = [from, to].sort().join('|');
+            if (!roadSegments.has(key)) roadSegments.set(key, [from, to]);
+        });
+    });
+
+    const traceRoads = () => {
+        ctx.beginPath();
+        roadSegments.forEach(([from, to]) => {
+            const start = getCoords(from);
+            const end = getCoords(to);
+            ctx.moveTo(start.x, start.y);
+            ctx.lineTo(end.x, end.y);
+        });
+        ctx.stroke();
+    };
+
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.setLineDash([]);
+    ctx.strokeStyle = 'rgba(116, 111, 95, .32)';
+    ctx.lineWidth = 10;
+    traceRoads();
+    ctx.strokeStyle = 'rgba(255, 253, 244, .94)';
+    ctx.lineWidth = 7;
+    traceRoads();
+    ctx.strokeStyle = 'rgba(148, 139, 113, .42)';
     ctx.lineWidth = 1;
-
-    for (let x = 0; x <= width; x += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
-        ctx.stroke();
-    }
-
-    for (let y = 0; y <= height; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
-        ctx.stroke();
-    }
+    ctx.setLineDash([6, 8]);
+    traceRoads();
+    ctx.setLineDash([]);
 }
 
 function getStationSatisfaction(stationId) {
@@ -1167,15 +1245,15 @@ function draw() {
 
     if (!dataLoaded) return;
 
-    drawGrid();
+    drawMapBackground();
 
     // Draw all routes first (background)
     trucks.filter(truck => truck.visible).forEach(truck => {
         if (truck.segments.length === 0) return;
 
-        ctx.strokeStyle = truck.color + '20';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = truck.color + (focusedTruckId === truck.id ? 'a8' : '70');
+        ctx.lineWidth = focusedTruckId === truck.id ? 4 : 2.5;
+        ctx.setLineDash([5, 5]);
         ctx.beginPath();
 
         truck.segments.forEach(([s, e]) => {
