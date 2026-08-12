@@ -20,4 +20,4 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: .
-          exclude_assets: '.github,.gitignore,.env,generate_config.sh,scripts,backend,tests,*.md,*.py'
+          exclude_assets: '.github,.gitignore,.env,generate_config.sh,scripts,backend,tests,*.py'
