@@ -47,6 +47,20 @@ async def test_root_health_and_openapi(api_client):
 
 
 @pytest.mark.anyio
+async def test_local_development_origin_is_allowed(api_client):
+    response = await api_client.options(
+        "/generator/generate",
+        headers={
+            "Origin": "http://localhost:8001",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:8001"
+
+
+@pytest.mark.anyio
 async def test_generator_returns_download(api_client):
     response = await api_client.post("/generator/generate", json={
         "instance_code": "API", "nb_vehicules": 3, "nb_depots": 2,

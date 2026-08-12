@@ -12,19 +12,19 @@
 </head>
 <body class="bg-slate-50 text-slate-900 antialiased">
   <header class="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur">
-    <nav class="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 lg:px-8" aria-label="Main navigation">
-      <a href="index.html" class="font-display text-xl font-bold tracking-tight">MPVRP<span class="text-blue-600">—CC</span></a>
+    <nav class="mx-auto flex max-w-7xl items-center justify-between px-5 py-3 lg:px-8" aria-label="Main navigation">
+      <a data-site-brand href="index.html" aria-label="MPVRP-CC home"></a>
       <button data-menu-button class="rounded-lg border border-slate-200 p-2 lg:hidden" aria-label="Open menu" aria-expanded="false">☰</button>
       <div class="hidden items-center gap-7 text-sm font-medium lg:flex">
-        <a class="text-slate-600 hover:text-blue-600" href="pages/documentation.html">Problem</a>
-        <a class="text-slate-600 hover:text-blue-600" href="pages/specifications.html">Specifications</a>
+        <a class="text-slate-600 hover:text-blue-600" href="pages/documentation.html">Documentation</a>
         <a class="text-slate-600 hover:text-blue-600" href="pages/tools.html">Tools</a>
+        <a class="text-slate-600 hover:text-blue-600" href="pages/visualisation.html">Visualizer</a>
         <a class="text-slate-600 hover:text-blue-600" href="pages/scoreboard.html">Scoreboard</a>
         <a class="rounded-full bg-slate-950 px-5 py-2.5 text-white hover:bg-blue-600" href="pages/submission.html">Submit solutions</a>
       </div>
     </nav>
     <div data-mobile-menu class="hidden border-t border-slate-100 bg-white px-5 py-5 lg:hidden">
-      <div class="grid gap-4 text-sm font-medium"><a href="pages/documentation.html">Problem</a><a href="pages/specifications.html">Specifications</a><a href="pages/tools.html">Tools</a><a href="pages/scoreboard.html">Scoreboard</a><a class="text-blue-600" href="pages/submission.html">Submit solutions →</a></div>
+      <div class="grid gap-4 text-sm font-medium"><a href="pages/documentation.html">Documentation</a><a href="pages/tools.html">Tools</a><a href="pages/visualisation.html">Visualizer</a><a href="pages/scoreboard.html">Scoreboard</a><a class="text-blue-600" href="pages/submission.html">Submit solutions →</a></div>
     </div>
   </header>
 
@@ -32,7 +32,6 @@
     <section class="grid-noise overflow-hidden border-b border-slate-200 bg-white">
       <div class="mx-auto grid max-w-7xl gap-14 px-5 py-20 lg:grid-cols-[1.15fr_.85fr] lg:px-8 lg:py-28">
         <div>
-          <div class="mb-7 inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[.16em] text-blue-700"><span class="h-2 w-2 rounded-full bg-blue-600"></span> 150 paired benchmark instances</div>
           <h1 class="max-w-4xl font-display text-5xl font-semibold leading-[.96] tracking-[-.045em] text-ink sm:text-6xl lg:text-7xl">Route beyond<br><span class="text-blue-600">distance.</span></h1>
           <p class="mt-8 max-w-2xl text-lg leading-8 text-slate-600">Design multi-product vehicle routes that balance geography, capacity and the operational cost of changing products. Compare the same network with and without changeover costs.</p>
           <div class="mt-9 flex flex-wrap gap-3"><a href="#benchmarks" class="rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700">Download benchmarks</a><a href="pages/documentation.html" class="rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-semibold hover:border-slate-900">Read the problem</a></div>
@@ -55,6 +54,6 @@
 
     <section class="mx-auto max-w-7xl px-5 py-20 lg:px-8"><div class="flex flex-col justify-between gap-8 rounded-3xl bg-slate-950 p-8 text-white sm:p-12 lg:flex-row lg:items-end"><div><p class="text-xs font-bold uppercase tracking-[.18em] text-blue-400">Ready to compete?</p><h2 class="mt-4 max-w-2xl font-display text-4xl font-semibold">Validate locally. Submit once. Learn from every instance.</h2></div><div class="flex flex-wrap gap-3"><a href="pages/tools.html" class="rounded-full border border-slate-700 px-5 py-3 text-sm font-semibold hover:bg-slate-800">Open tools</a><a href="pages/submission.html" class="rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500">Submit ZIP</a></div></div></section>
   </main>
-  <footer class="border-t border-slate-200 bg-white"><div class="mx-auto flex max-w-7xl flex-col gap-2 px-5 py-8 text-sm text-slate-500 sm:flex-row sm:justify-between lg:px-8"><span>© <span data-year></span> MPVRP-CC · LRSIA</span><a class="hover:text-blue-600" href="https://github.com/LRSIA-Ratheil-Research-Team">Ratheil Research Team ↗</a></div></footer>
+  <footer data-site-footer class="border-t border-slate-200 bg-white"></footer>
   <script src="pages/static/js/site.js"></script>
 </body></html>

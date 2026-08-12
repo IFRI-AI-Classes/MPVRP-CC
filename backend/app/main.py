@@ -12,6 +12,7 @@ load_dotenv()
 FRONTEND_DEV_URL = os.getenv("FRONTEND_DEV_URL", "")
 FRONTEND_PROD_URL = os.getenv("FRONTEND_PROD_URL", "")
 FRONTEND_PROD_URL_2 = os.getenv("FRONTEND_PROD_URL_2", "")
+CORS_ALLOW_LOCALHOST = os.getenv("CORS_ALLOW_LOCALHOST", "true").lower() in {"1", "true", "yes"}
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO").upper(),
@@ -21,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 ALLOWED_ORIGINS = [origin for origin in (FRONTEND_PROD_URL, FRONTEND_PROD_URL_2, FRONTEND_DEV_URL) if origin]
+CORS_ORIGIN_REGEX = r"https?://(?:localhost|127\.0\.0\.1)(?::\d+)?" if CORS_ALLOW_LOCALHOST else None
 logger.info("CORS allow-list configured with %s origin(s)", len(ALLOWED_ORIGINS))
 
 
@@ -30,10 +32,11 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Only explicitly configured GitHub Pages/development origins may call the API.
+# Allow configured frontends and, by default, local static servers used in development.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=CORS_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
