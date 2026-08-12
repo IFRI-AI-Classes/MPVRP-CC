@@ -24,23 +24,6 @@ function switchTab(tabName) {
     document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
 }
 
-// Mobile menu toggle
-const menuToggle = document.getElementById('mobile-menu');
-const navLinks = document.getElementById('nav-links');
-
-if (menuToggle) {
-    menuToggle.addEventListener('click', function() {
-        navLinks.classList.toggle('active');
-    });
-
-    // Close menu when a link is clicked
-    navLinks.querySelectorAll('a').forEach(link => {
-        link.addEventListener('click', function() {
-            navLinks.classList.remove('active');
-        });
-    });
-}
-
 // Generator form submission
 async function handleGeneratorSubmit(event) {
     event.preventDefault();
@@ -59,19 +42,19 @@ async function handleGeneratorSubmit(event) {
     try {
         // Collect form data
         const formData = {
-            id_instance: document.getElementById('gen-id').value,
+            instance_code: document.getElementById('gen-id').value,
             nb_vehicules: parseInt(document.getElementById('gen-vehicles').value),
             nb_depots: parseInt(document.getElementById('gen-depots').value),
             nb_garages: parseInt(document.getElementById('gen-garages').value),
             nb_stations: parseInt(document.getElementById('gen-stations').value),
             nb_produits: parseInt(document.getElementById('gen-products').value),
-            max_coord: parseInt(document.getElementById('gen-maxcoord').value) || null,
-            min_capacite: parseInt(document.getElementById('gen-mincap').value) || null,
-            max_capacite: parseInt(document.getElementById('gen-maxcap').value) || null,
-            min_transition_cost: parseInt(document.getElementById('gen-mintrans').value) || null,
-            max_transition_cost: parseInt(document.getElementById('gen-maxtrans').value) || null,
-            min_demand: parseInt(document.getElementById('gen-mindemand').value) || null,
-            max_demand: parseInt(document.getElementById('gen-maxdemand').value) || null,
+            max_coord: parseInt(document.getElementById('gen-maxcoord').value) || 100,
+            changeover_cost_level: document.getElementById('gen-changeover').value,
+            capacity_level: document.getElementById('gen-capacity').value,
+            demand_level: document.getElementById('gen-demand').value,
+            stock_level: document.getElementById('gen-stock').value,
+            demand_probability: parseFloat(document.getElementById('gen-probability').value),
+            coordinate_strategy: document.getElementById('gen-strategy').value,
             seed: document.getElementById('gen-seed').value ? parseInt(document.getElementById('gen-seed').value) : null
         };
 
@@ -285,4 +268,3 @@ function formatMetricValue(value) {
     }
     return String(value);
 }
-

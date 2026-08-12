@@ -1,131 +1,59 @@
-<!DOCTYPE html>
-<html lang="fr">
+<!doctype html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MPVRP-CC - Multi-Product Vehicle Routing Problem with Changeover Cost</title>
-    <link rel="stylesheet" href="pages/static/css/style.css">
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Official benchmark platform for the Multi-Product Vehicle Routing Problem with Changeover Costs.">
+  <title>MPVRP-CC — Route beyond distance</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif'],display:['Bricolage Grotesque','sans-serif']},colors:{ink:'#0b1220',signal:'#2563eb'}}}}</script>
+  <link rel="stylesheet" href="pages/static/css/app.css">
 </head>
-<body>
-
-<header>
-    <h1>
-        MPVRP-CC
-        <span>Multi-Product Vehicle Routing Problem with Changeover Cost</span>
-    </h1>
-    <nav>
-        <div class="menu-toggle" id="mobile-menu">
-            <span class="bar"></span>
-            <span class="bar"></span>
-            <span class="bar"></span>
-        </div>
-        <ul class="nav-links" id="nav-links">
-            <li><a href="#introduction">Introduction</a></li>
-            <li><a href="#documentation">Documentation</a></li>
-            <li><a href="#instances">Instances</a></li>
-            <li><a href="#visualization">Visualisation</a></li>
-            <li><a href="pages/tools.html">Tools</a></li>
-            <li><a href="pages/scoreboard.html">Scoreboard</a></li>
-            <li><a href="pages/submission.html" class="nav-cta">Submission</a></li>
-        </ul>
+<body class="bg-slate-50 text-slate-900 antialiased">
+  <header class="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur">
+    <nav class="mx-auto flex max-w-7xl items-center justify-between px-5 py-3 lg:px-8" aria-label="Main navigation">
+      <a data-site-brand href="index.html" aria-label="MPVRP-CC home"></a>
+      <button data-menu-button class="rounded-lg border border-slate-200 p-2 lg:hidden" aria-label="Open menu" aria-expanded="false">☰</button>
+      <div class="hidden items-center gap-7 text-sm font-medium lg:flex">
+        <a class="text-slate-600 hover:text-blue-600" href="pages/documentation.html">Documentation</a>
+        <a class="text-slate-600 hover:text-blue-600" href="pages/tools.html">Tools</a>
+        <a class="text-slate-600 hover:text-blue-600" href="pages/visualisation.html">Visualizer</a>
+        <a class="text-slate-600 hover:text-blue-600" href="pages/scoreboard.html">Scoreboard</a>
+        <a class="rounded-full bg-slate-950 px-5 py-2.5 text-white hover:bg-blue-600" href="pages/submission.html">Submit solutions</a>
+      </div>
     </nav>
-</header>
-
-<section id="introduction">
-    <h2>Introduction</h2>
-    <p>
-        The distribution of multiple products across logistics networks represents a major economic and environmental challenge in industries such as petroleum, chemicals, and food supply. Beyond transportation expenses, logistics operators must also account for operational costs related to fleet maintenance and product management between consecutive distribution rounds. These additional costs significantly influence planning decisions but are rarely considered in classical vehicle routing formulations.
-    </p>
-
-    <p>
-        We introduce the <strong>Multi-Product Vehicle Routing Problem with Changeover Costs (MPVRP-CC)</strong>, a new variant of the Vehicle Routing Problem designed to incorporate these operational constraints into multi-product distribution planning. In particular, the model captures the cost incurred when a vehicle changes the product it carries between successive tours, reflecting cleaning, maintenance, or reconfiguration operations required before transporting another product.
-    </p>
-
-    <p>
-        By explicitly integrating changeover costs into routing decisions, the MPVRP-CC provides a more realistic framework for optimizing distribution operations in sectors where vehicles handle multiple product types. The objective is to minimize the overall distribution cost while ensuring efficient deliveries from depots to customers under practical operational constraints.
-    </p>
-</section>
-
-<section id="documentation">
-    <h2>Documentation</h2>
-    <p>
-        Detailed problem specifications and instance structures can be found in the
-        <a href="docs/problem_definition.pdf" target="_blank">overview</a>
-        and
-        <a href="docs/instance_description.pdf" target="_blank">data format</a>
-        sections, respectively. Our dataset includes 50 instances partitioned into small, medium, and large categories to reflect varying scales of stations, depots, and product quantities. Although reference solutions are not included, the expected submission format is outlined
-        <a href="docs/solution_description.pdf" target="_blank">here</a>.
-    </p>
-</section>
-
-<section id="instances">
-    <h2>Instances</h2>
-    <p>Benchmark instances are available in three categories based on problem size:</p>
-
-    <table>
-        <thead>
-            <tr>
-                <th>Category</th>
-                <th>Stations</th>
-                <th>Depots</th>
-                <th>Products</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>Small</td>
-                <td>5 – 50</td>
-                <td>2 – 4</td>
-                <td>2 – 5</td>
-            </tr>
-            <tr>
-                <td>Medium</td>
-                <td>50 – 100</td>
-                <td>4 – 7</td>
-                <td>5 – 8</td>
-            </tr>
-            <tr>
-                <td>Large</td>
-                <td>100 – 200</td>
-                <td>6 – 10</td>
-                <td>8 – 12</td>
-            </tr>
-        </tbody>
-    </table>
-
-    <p>Download instances:</p>
-    <div class="download-links">
-        <a href="data/zips/small.zip">Small instances</a>
-        <a href="data/zips/medium.zip">Medium instances</a>
-        <a href="data/zips/large.zip">Large instances</a>
+    <div data-mobile-menu class="hidden border-t border-slate-100 bg-white px-5 py-5 lg:hidden">
+      <div class="grid gap-4 text-sm font-medium"><a href="pages/documentation.html">Documentation</a><a href="pages/tools.html">Tools</a><a href="pages/visualisation.html">Visualizer</a><a href="pages/scoreboard.html">Scoreboard</a><a class="text-blue-600" href="pages/submission.html">Submit solutions →</a></div>
     </div>
-</section>
+  </header>
 
-<section id="visualization">
-    <h2>Visualisation</h2>
-    <p>
-        Understanding and analyzing routing solutions is important for validating algorithms and communicating results. Our interactive visualization tool brings MPVRP-CC solutions to life, allowing you to explore vehicle routes, depot inventories, and delivery sequences in an intuitive graphical interface.
-    </p>
-    <p>
-        The visualization module accepts both instance and solution files in the standard format described in our documentation. Simply upload your files to begin exploring your routing solutions.
-        <a href="pages/visualisation.html" class="cta-link">Launch visualizer :)</a>
-    </p>
-</section>
+  <main>
+    <section class="grid-noise overflow-hidden border-b border-slate-200 bg-white">
+      <div class="mx-auto grid max-w-7xl gap-14 px-5 py-20 lg:grid-cols-[1.15fr_.85fr] lg:px-8 lg:py-28">
+        <div>
+          <h1 class="max-w-4xl font-display text-5xl font-semibold leading-[.96] tracking-[-.045em] text-ink sm:text-6xl lg:text-7xl">Route beyond<br><span class="text-blue-600">distance.</span></h1>
+          <p class="mt-8 max-w-2xl text-lg leading-8 text-slate-600">Design multi-product vehicle routes that balance geography, capacity and the operational cost of changing products. Compare the same network with and without changeover costs.</p>
+          <div class="mt-9 flex flex-wrap gap-3"><a href="#benchmarks" class="rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700">Download benchmarks</a><a href="pages/documentation.html" class="rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-semibold hover:border-slate-900">Read the problem</a></div>
+        </div>
+        <div class="relative self-end rounded-3xl border border-slate-200 bg-slate-950 p-7 text-white shadow-2xl shadow-slate-300/60">
+          <div class="mb-10 flex items-center justify-between text-xs uppercase tracking-[.18em] text-slate-400"><span>Objective</span><span>minimize</span></div>
+          <div class="font-display text-3xl font-semibold leading-tight">Travel distance<br><span class="text-blue-400">+</span> changeover cost</div>
+          <div class="mt-10 grid grid-cols-3 gap-3 border-t border-slate-800 pt-6 text-sm"><div><strong class="block text-2xl">150</strong><span class="text-slate-400">official</span></div><div><strong class="block text-2xl">150</strong><span class="text-slate-400">zero-cost</span></div><div><strong class="block text-2xl">1:1</strong><span class="text-slate-400">paired</span></div></div>
+        </div>
+      </div>
+    </section>
 
-<footer>
-    <p><a href="https://github.com/LRSIA-Ratheil-Research-Team" target="_blank">Ratheil Research Team</a>, Laboratory of Research in Computer Science and Applications (LRSIA), 2026</p>
-</footer>
+    <section class="mx-auto max-w-7xl px-5 py-20 lg:px-8">
+      <div class="grid gap-12 lg:grid-cols-[.7fr_1.3fr]"><div><p class="text-xs font-bold uppercase tracking-[.18em] text-blue-600">The challenge</p><h2 class="mt-4 font-display text-4xl font-semibold tracking-tight">One fleet.<br>Several products.<br>Real trade-offs.</h2></div><div class="grid gap-5 sm:grid-cols-2"><article class="rounded-2xl border border-slate-200 bg-white p-6"><span class="text-sm font-semibold text-blue-600">01 / Route</span><h3 class="mt-5 text-xl font-semibold">Connected delivery trips</h3><p class="mt-2 leading-7 text-slate-600">Every used vehicle leaves its home garage, loads at depots, serves customers and returns home.</p></article><article class="rounded-2xl border border-slate-200 bg-white p-6"><span class="text-sm font-semibold text-blue-600">02 / Product</span><h3 class="mt-5 text-xl font-semibold">One product per trip</h3><p class="mt-2 leading-7 text-slate-600">A vehicle may switch products between trips, with a directed cost determined by the transition matrix.</p></article><article class="rounded-2xl border border-slate-200 bg-white p-6"><span class="text-sm font-semibold text-blue-600">03 / Demand</span><h3 class="mt-5 text-xl font-semibold">Split deliveries</h3><p class="mt-2 leading-7 text-slate-600">A station-product demand may be shared across vehicles, while every quantity must be delivered exactly.</p></article><article class="rounded-2xl border border-slate-200 bg-white p-6"><span class="text-sm font-semibold text-blue-600">04 / Evidence</span><h3 class="mt-5 text-xl font-semibold">Paired experiments</h3><p class="mt-2 leading-7 text-slate-600">Only the transition matrix changes between paired scenarios, isolating its effect on route design.</p></article></div></div>
+    </section>
 
-<script>
-    // ── Nav mobile ───────────────────────────────────────────
-    const mobileMenu = document.getElementById('mobile-menu');
-    const navLinks   = document.getElementById('nav-links');
+    <section id="benchmarks" class="bg-blue-600 text-white">
+      <div class="mx-auto max-w-7xl px-5 py-20 lg:px-8"><div class="max-w-3xl"><p class="text-xs font-bold uppercase tracking-[.18em] text-blue-200">Benchmark datasets</p><h2 class="mt-4 font-display text-4xl font-semibold tracking-tight sm:text-5xl">Same instances. Two cost regimes.</h2><p class="mt-5 text-lg leading-8 text-blue-100">Submit solutions for the original-cost dataset. Use the zero-cost twin to measure how changeover economics reshape your decisions.</p></div><div class="mt-10 grid gap-4 md:grid-cols-2"><a href="data/zips/with_changeover_costs.zip" class="group rounded-2xl bg-white p-6 text-slate-900"><span class="text-xs font-bold uppercase tracking-widest text-blue-600">Official · evaluated</span><h3 class="mt-4 text-2xl font-semibold">With changeover costs</h3><p class="mt-2 text-slate-600">150 instances with directed transition matrices.</p><span class="mt-6 inline-block font-semibold text-blue-600 group-hover:translate-x-1">Download ZIP →</span></a><a href="data/zips/without_changeover_costs.zip" class="group rounded-2xl border border-blue-400 bg-blue-700/40 p-6"><span class="text-xs font-bold uppercase tracking-widest text-blue-200">Comparative · self-evaluation</span><h3 class="mt-4 text-2xl font-semibold">Without changeover costs</h3><p class="mt-2 text-blue-100">The same 150 instances with zero transition matrices.</p><span class="mt-6 inline-block font-semibold group-hover:translate-x-1">Download ZIP →</span></a></div></div>
+    </section>
 
-    mobileMenu.addEventListener('click', () => navLinks.classList.toggle('active'));
-    document.querySelectorAll('.nav-links a').forEach(link => {
-        link.addEventListener('click', () => navLinks.classList.remove('active'));
-    });
-</script>
-
-</body>
-</html>
+    <section class="mx-auto max-w-7xl px-5 py-20 lg:px-8"><div class="flex flex-col justify-between gap-8 rounded-3xl bg-slate-950 p-8 text-white sm:p-12 lg:flex-row lg:items-end"><div><p class="text-xs font-bold uppercase tracking-[.18em] text-blue-400">Ready to compete?</p><h2 class="mt-4 max-w-2xl font-display text-4xl font-semibold">Validate locally. Submit once. Learn from every instance.</h2></div><div class="flex flex-wrap gap-3"><a href="pages/tools.html" class="rounded-full border border-slate-700 px-5 py-3 text-sm font-semibold hover:bg-slate-800">Open tools</a><a href="pages/submission.html" class="rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500">Submit ZIP</a></div></div></section>
+  </main>
+  <footer data-site-footer class="border-t border-slate-200 bg-white"></footer>
+  <script src="pages/static/js/site.js"></script>
+</body></html>

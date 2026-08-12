@@ -44,11 +44,19 @@ let stationDemandsPerProduct = {}; // { stationId: { productIdx: demand } }
 
 // Tooltip state
 let hoveredNode = null;
+let focusedTruckId = null;
 
 const TRUCK_COLORS = [
-    '#6366f1', '#22d3ee', '#f472b6', '#34d399', '#fbbf24',
-    '#f87171', '#a78bfa', '#2dd4bf', '#fb923c', '#e879f9'
+    '#2563eb', '#dc2626', '#16a34a', '#9333ea', '#ea580c', '#0891b2',
+    '#db2777', '#4f46e5', '#65a30d', '#c026d3', '#0f766e', '#b45309',
+    '#03050a', '#ee99ae', '#15803d', '#7e22ce', '#c2410c', '#0e7490',
+    '#a21caf', '#cac538', '#4d7c0f', '#9d174d', '#0369a1', '#a16207'
 ];
+
+const EXAMPLE_FILES = {
+    instance: '../data/examples/MPVRP_052_s9_d1_p2.dat',
+    solution: '../data/examples/Sol_052_s9_d1_p2.dat'
+};
 
 // ═══════════════════════════════════════════════════════════════
 // THEME MANAGEMENT
@@ -102,6 +110,34 @@ function clearAllNotifications() {
     }
 }
 
+function clearFileError() {
+    const errorEl = document.getElementById('fileError');
+    if (errorEl) errorEl.hidden = true;
+}
+
+function showFileError(filename, error) {
+    const errorEl = document.getElementById('fileError');
+    const messageEl = document.getElementById('fileErrorMessage');
+    if (!errorEl || !messageEl) return;
+
+    const line = error.lineNumber ? `, line ${error.lineNumber}` : '';
+    messageEl.textContent = `${filename}${line}: ${error.message}`;
+    errorEl.hidden = false;
+}
+
+function parseError(message, lineNumber) {
+    const error = new Error(message);
+    error.lineNumber = lineNumber;
+    return error;
+}
+
+function jsonErrorWithLine(error, content) {
+    const position = Number(error.message.match(/position\s+(\d+)/i)?.[1]);
+    if (!Number.isFinite(position)) return error;
+    error.lineNumber = content.slice(0, position).split(/\r?\n/).length;
+    return error;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // FILE UPLOAD HANDLING
 // ═══════════════════════════════════════════════════════════════
@@ -133,42 +169,125 @@ function setupDragDrop(zoneId, inputId, type) {
     input.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) handleFile(file, type);
+        e.target.value = '';
     });
 }
 
 function handleFile(file, type) {
     const reader = new FileReader();
     reader.onload = (event) => {
+        const previousValue = type === 'instance' ? instance : solution;
         try {
             const content = event.target.result;
             if (type === 'instance') {
                 if (file.name.endsWith('.dat') || file.name.endsWith('.txt')) {
                     instance = parseDatInstance(content);
                 } else {
-                    instance = JSON.parse(content);
+                    try { instance = JSON.parse(content); } catch (error) { throw jsonErrorWithLine(error, content); }
                 }
-                updateFileStatus('instance', file.name);
+                validateInstance(instance);
             } else {
                 if (file.name.endsWith('.dat') || file.name.endsWith('.txt')) {
                     solution = parseDatSolution(content);
                 } else {
-                    solution = JSON.parse(content);
+                    try { solution = JSON.parse(content); } catch (error) { throw jsonErrorWithLine(error, content); }
                 }
-                updateFileStatus('solution', file.name);
+                validateSolution(solution);
             }
             initData();
+            updateFileStatus(type, file.name);
             resize();
+            clearFileError();
         } catch (err) {
-            alert('Error parsing file: ' + err.message);
-            console.error(err);
+            if (type === 'instance') instance = previousValue;
+            else solution = previousValue;
+            try { initData(); resize(); } catch (restoreError) { console.error(restoreError); }
+            showFileError(file.name, err);
+            console.warn(`Could not load ${file.name}: ${err.message}`);
         }
     };
     reader.readAsText(file);
 }
 
+function validateInstance(value) {
+    if (!value || typeof value !== 'object') throw new Error('the instance must be an object.');
+    if (!value.locations || typeof value.locations !== 'object' || Object.keys(value.locations).length === 0) {
+        throw new Error('no locations were found.');
+    }
+    for (const [id, coords] of Object.entries(value.locations)) {
+        if (!Array.isArray(coords) || coords.length < 2 || coords.slice(0, 2).some(v => !Number.isFinite(Number(v)))) {
+            throw new Error(`location ${id} must contain two numeric coordinates.`);
+        }
+    }
+}
+
+function validateSolution(value) {
+    if (!value || typeof value !== 'object') throw new Error('the solution must be an object.');
+    if (!value.routes || typeof value.routes !== 'object' || Object.keys(value.routes).length === 0) {
+        throw new Error('no vehicle routes were found.');
+    }
+    for (const [vehicleId, segments] of Object.entries(value.routes)) {
+        if (!Array.isArray(segments) || segments.some(segment => !Array.isArray(segment) || segment.length !== 2)) {
+            throw new Error(`route ${vehicleId} must be a list of [start, end] segments.`);
+        }
+    }
+}
+
+async function loadExample() {
+    const button = document.getElementById('exampleButton');
+    const originalLabel = button?.textContent;
+    if (button) {
+        button.disabled = true;
+        button.textContent = 'Loading…';
+    }
+
+    try {
+        const [instanceResponse, solutionResponse] = await Promise.all([
+            fetch(EXAMPLE_FILES.instance),
+            fetch(EXAMPLE_FILES.solution)
+        ]);
+
+        if (!instanceResponse.ok) throw new Error(`could not read ${EXAMPLE_FILES.instance} (${instanceResponse.status}).`);
+        if (!solutionResponse.ok) throw new Error(`could not read ${EXAMPLE_FILES.solution} (${solutionResponse.status}).`);
+
+        const [instanceContent, solutionContent] = await Promise.all([
+            instanceResponse.text(),
+            solutionResponse.text()
+        ]);
+        const parsedInstance = parseDatInstance(instanceContent);
+        const parsedSolution = parseDatSolution(solutionContent);
+        validateInstance(parsedInstance);
+        validateSolution(parsedSolution);
+
+        instance = parsedInstance;
+        solution = parsedSolution;
+        updateFileStatus('instance', EXAMPLE_FILES.instance.split('/').pop());
+        updateFileStatus('solution', EXAMPLE_FILES.solution.split('/').pop());
+        clearFileError();
+        initData();
+        resize();
+    } catch (error) {
+        const localHint = window.location.protocol === 'file:'
+            ? ' Open the site through its local web server; browsers block fetch() from file:// pages.'
+            : '';
+        showFileError('data/examples', new Error(error.message + localHint));
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.textContent = originalLabel;
+        }
+    }
+}
+
 function parseDatInstance(text) {
-    const lines = text.trim().split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+    const sourceLines = text.split(/\r?\n/)
+        .map((text, index) => ({ text: text.trim(), number: index + 1 }))
+        .filter(line => line.text && !line.text.startsWith('#'));
+    const lines = sourceLines.map(line => line.text);
+    const lineNumberAt = index => sourceLines[index]?.number || Math.max(1, text.split(/\r?\n/).length);
     let lineIdx = 0;
+
+    if (lines.length === 0) throw parseError('the instance file is empty.', 1);
 
     // Dimensions
     // Two conventions exist in the project history:
@@ -177,7 +296,7 @@ function parseDatInstance(text) {
     // We auto-detect by validating the change-cost matrix shape.
     const dims = lines[lineIdx++].split(/\s+/).map(Number);
     if (dims.length !== 5 || dims.some(n => Number.isNaN(n))) {
-        throw new Error('Invalid dimensions line in instance .dat');
+        throw parseError('expected five integer dimensions.', lineNumberAt(0));
     }
 
     const candidates = [
@@ -213,10 +332,21 @@ function parseDatInstance(text) {
     const chosen = candidates.find(c => matrixLooksValid(lineIdx, c.numProducts)) || candidates[0];
     const { numVehicles, numDepots, numProducts, numStations, numGarages } = chosen;
 
+    if ([numVehicles, numDepots, numProducts, numStations, numGarages].some(n => !Number.isInteger(n) || n < 1)) {
+        throw parseError('all dimensions must be positive integers.', lineNumberAt(0));
+    }
+
+    if (!matrixLooksValid(lineIdx, numProducts)) {
+        throw parseError(`expected a ${numProducts} × ${numProducts} numeric change-cost matrix.`, lineNumberAt(lineIdx));
+    }
+
     // Skip Change Costs (numProducts lines)
     lineIdx += numProducts;
 
     // Skip Vehicles (numVehicles lines)
+    if (lineIdx + numVehicles > lines.length) {
+        throw parseError(`expected ${numVehicles} vehicle rows.`, lineNumberAt(lineIdx));
+    }
     lineIdx += numVehicles;
 
     const locations = {};
@@ -225,7 +355,11 @@ function parseDatInstance(text) {
 
     // Parse Depots
     for (let i = 0; i < numDepots; i++) {
+        if (!lines[lineIdx]) throw parseError(`missing depot ${i + 1}.`, lineNumberAt(lineIdx));
         const parts = lines[lineIdx++].split(/\s+/);
+        if (parts.length < 3 + numProducts || parts.slice(1, 3 + numProducts).some(v => !Number.isFinite(Number(v)))) {
+            throw parseError(`depot ${i + 1} must contain an id, two coordinates and ${numProducts} supplies.`, lineNumberAt(lineIdx - 1));
+        }
         const id = parts[0];
         const x = parseFloat(parts[1]);
         const y = parseFloat(parts[2]);
@@ -241,7 +375,11 @@ function parseDatInstance(text) {
 
     // Parse Garages
     for (let i = 0; i < numGarages; i++) {
+        if (!lines[lineIdx]) throw parseError(`missing garage ${i + 1}.`, lineNumberAt(lineIdx));
         const parts = lines[lineIdx++].split(/\s+/);
+        if (parts.length < 3 || parts.slice(1, 3).some(v => !Number.isFinite(Number(v)))) {
+            throw parseError(`garage ${i + 1} must contain an id and two coordinates.`, lineNumberAt(lineIdx - 1));
+        }
         const id = parts[0];
         const x = parseFloat(parts[1]);
         const y = parseFloat(parts[2]);
@@ -251,7 +389,11 @@ function parseDatInstance(text) {
     // Parse Stations
     const stationDemandsPerProductLocal = {}; // Track per-product demands
     for (let i = 0; i < numStations; i++) {
+        if (!lines[lineIdx]) throw parseError(`missing station ${i + 1}.`, lineNumberAt(lineIdx));
         const parts = lines[lineIdx++].split(/\s+/);
+        if (parts.length < 3 + numProducts || parts.slice(1, 3 + numProducts).some(v => !Number.isFinite(Number(v)))) {
+            throw parseError(`station ${i + 1} must contain an id, two coordinates and ${numProducts} demands.`, lineNumberAt(lineIdx - 1));
+        }
         const id = parts[0];
         const x = parseFloat(parts[1]);
         const y = parseFloat(parts[2]);
@@ -283,14 +425,21 @@ function parseDatInstance(text) {
 }
 
 function parseDatSolution(text) {
-    const lines = text.trim().split('\n').map(l => l.trim()).filter(l => l);
+    const sourceLines = text.split(/\r?\n/)
+        .map((text, index) => ({ text: text.trim(), number: index + 1 }))
+        .filter(line => line.text && !line.text.startsWith('#'));
+    const lines = sourceLines.map(line => line.text);
+    const lineNumberAt = index => sourceLines[index]?.number || Math.max(1, text.split(/\r?\n/).length);
     let lineIdx = 0;
+
+    if (lines.length === 0) throw parseError('the solution file is empty.', 1);
 
     const solution = {
         routes: {},
         depotLoads: {}, // Track loading quantities at depots
         productLines: {},
         segmentMeta: {},
+        routeSourceLines: {},
         metrics: {}
     };
 
@@ -304,13 +453,16 @@ function parseDatSolution(text) {
             const vehicleId = parseInt(idMatch[1]);
             // route content after the colon
             let routeLine = idMatch[2].trim();
+            if (!routeLine) throw parseError(`route for vehicle ${vehicleId} is empty.`, lineNumberAt(lineIdx));
             lineIdx++;
 
             // Find next non-empty line for products
             while (lineIdx < lines.length && lines[lineIdx].trim() === '') {
                 lineIdx++;
             }
-            if (lineIdx >= lines.length) break;
+            if (lineIdx >= lines.length) {
+                throw parseError(`missing product line for vehicle ${vehicleId}.`, lineNumberAt(lineIdx));
+            }
 
             let productsLineRaw = lines[lineIdx].trim();
             // Remove optional "ID: " prefix from products line
@@ -327,6 +479,20 @@ function parseDatSolution(text) {
             // Parse the route (split by " - ") and build segments
             const routeParts = routeLine.split(' - ').map(p => p.trim());
             const productStates = productsLineRaw.split(' - ').map(p => parseProductState(p));
+            if (routeParts.length < 2) {
+                throw parseError(`route for vehicle ${vehicleId} needs at least two nodes separated by " - ".`, lineNumberAt(lineIdx - 2));
+            }
+            if (productStates.some(product => product === null)) {
+                throw parseError(`product line for vehicle ${vehicleId} contains an invalid product state.`, lineNumberAt(lineIdx - 1));
+            }
+            const hasStatePerNode = productStates.length === routeParts.length;
+            const hasStatePerSegment = productStates.length === routeParts.length - 1;
+            if (!hasStatePerNode && !hasStatePerSegment) {
+                throw parseError(
+                    `vehicle ${vehicleId} has ${routeParts.length} route nodes; expected ${routeParts.length} product states (per node) or ${routeParts.length - 1} (per segment), but found ${productStates.length}.`,
+                    lineNumberAt(lineIdx - 1)
+                );
+            }
             const segments = [];
             const vehicleLoads = []; // Track loads for this vehicle
             const vehicleSegmentMeta = [];
@@ -374,6 +540,9 @@ function parseDatSolution(text) {
                 const fromInfo = extractNodeInfo(current, i, lastPos);
                 const toInfo = extractNodeInfo(next, i + 1, lastPos);
 
+                if (!fromInfo.id || !toInfo.id) {
+                    throw parseError(`vehicle ${vehicleId} contains an invalid node near "${!fromInfo.id ? current : next}".`, lineNumberAt(lineIdx - 2));
+                }
                 if (fromInfo.id && toInfo.id) {
                     segments.push([fromInfo.id, toInfo.id]);
                     vehicleSegmentMeta.push({
@@ -394,6 +563,7 @@ function parseDatSolution(text) {
             }
 
             solution.routes[`V${vehicleId}`] = segments;
+            solution.routeSourceLines[`V${vehicleId}`] = lineNumberAt(lineIdx - 2);
             solution.depotLoads[`V${vehicleId}`] = vehicleLoads;
             solution.productLines[`V${vehicleId}`] = productStates;
             solution.segmentMeta[`V${vehicleId}`] = vehicleSegmentMeta;
@@ -406,6 +576,10 @@ function parseDatSolution(text) {
             // We've reached the metrics section
             break;
         }
+    }
+
+    if (Object.keys(solution.routes).length === 0) {
+        throw parseError('expected a vehicle route in the form "1: node - node".', lineNumberAt(0));
     }
 
     // Parse metrics (last 6 lines)
@@ -421,6 +595,20 @@ function parseDatSolution(text) {
 
         solution.objective = solution.metrics.total_cost;
         solution.status = 'Solved';
+    } else {
+        throw parseError('expected the six metric lines after the routes.', lineNumberAt(lineIdx));
+    }
+
+    const numericMetrics = [
+        ['vehicles used', solution.metrics.vehicles_used, 0],
+        ['product changes', solution.metrics.product_changes, 1],
+        ['routing cost', solution.metrics.routing_cost, 2],
+        ['total cost', solution.metrics.total_cost, 3],
+        ['solver time', solution.metrics.time, 5]
+    ];
+    const invalidMetric = numericMetrics.find(([, value]) => !Number.isFinite(value));
+    if (invalidMetric) {
+        throw parseError(`${invalidMetric[0]} must be numeric.`, lineNumberAt(lineIdx + invalidMetric[2]));
     }
 
     return solution;
@@ -518,6 +706,7 @@ setupDragDrop('solutionZone', 'solutionUpload', 'solution');
 
 function initData() {
     trucks = [];
+    focusedTruckId = null;
     maxProgress = 0;
     progress = 0;
     isPlaying = false;
@@ -567,6 +756,7 @@ function initData() {
     const numGarages = instance.num_garages || 3;
     const numDepots = instance.num_depots || 2;
     const numStations = instance.num_stations || 5;
+    const hasInstanceLocations = Object.keys(instance.locations || {}).length > 0;
 
     // Process Routes
     Object.entries(solution.routes || {}).forEach(([id, segments], idx) => {
@@ -576,6 +766,12 @@ function initData() {
         const convertedSegments = segments.map(([from, to]) => {
             const fromId = mapNodeNumber(from, numGarages, numDepots, numStations);
             const toId = mapNodeNumber(to, numGarages, numDepots, numStations);
+            if (hasInstanceLocations && !instance.locations[fromId]) {
+                throw parseError(`route ${id} references unknown location ${fromId}.`, solution.routeSourceLines?.[id]);
+            }
+            if (hasInstanceLocations && !instance.locations[toId]) {
+                throw parseError(`route ${id} references unknown location ${toId}.`, solution.routeSourceLines?.[id]);
+            }
             return [fromId, toId];
         });
 
@@ -583,7 +779,8 @@ function initData() {
             id,
             color: TRUCK_COLORS[idx % TRUCK_COLORS.length],
             segments: convertedSegments,
-            totalDist: 0
+            totalDist: 0,
+            visible: true
         });
 
         convertedSegments.forEach(([from, to]) => {
@@ -607,23 +804,114 @@ function initData() {
     setTextContentById('stat-status', solution.status || 'Loaded');
 
     // Update Fleet Legend
-    const legendEl = document.getElementById('fleet-legend');
-    if (trucks.length > 0) {
-        legendEl.innerHTML = trucks.map(t => `
-            <div class="fleet-item">
-                <div class="fleet-color" style="background: ${t.color}"></div>
-                <span>${t.id}</span>
-            </div>
-        `).join('');
-    } else {
-        legendEl.innerHTML = `<div class="fleet-placeholder">Load a solution</div>`;
-    }
+    renderFleetLegend();
 
     // Update UI State
     dataLoaded = Object.keys(instance.locations).length > 0 && trucks.length > 0;
     document.getElementById('emptyState').style.display = dataLoaded ? 'none' : 'flex';
     document.getElementById('mapOverlay').style.display = dataLoaded ? 'flex' : 'none';
 
+    updateUI();
+}
+
+function renderFleetLegend() {
+    const legendEl = document.getElementById('fleet-legend');
+    legendEl.replaceChildren();
+
+    if (trucks.length === 0) {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'fleet-placeholder';
+        placeholder.textContent = 'Load a solution';
+        legendEl.appendChild(placeholder);
+        return;
+    }
+
+    const toolbar = document.createElement('div');
+    toolbar.className = 'fleet-toolbar';
+    const allButton = document.createElement('button');
+    allButton.type = 'button';
+    allButton.textContent = 'Show all routes';
+    allButton.addEventListener('click', showAllTrucks);
+    toolbar.appendChild(allButton);
+    legendEl.appendChild(toolbar);
+
+    trucks.forEach(truck => {
+        const item = document.createElement('div');
+        item.className = `fleet-item${truck.visible ? '' : ' is-hidden'}${focusedTruckId === truck.id ? ' is-focused' : ''}`;
+
+        const visibilityButton = document.createElement('button');
+        visibilityButton.type = 'button';
+        visibilityButton.className = 'fleet-visibility';
+        visibilityButton.title = truck.visible ? `Hide ${truck.id}` : `Show ${truck.id}`;
+        visibilityButton.setAttribute('aria-pressed', String(truck.visible));
+        visibilityButton.innerHTML = `<span class="fleet-color" style="background:${truck.color}"></span><span>${truck.visible ? '●' : '○'}</span>`;
+        visibilityButton.addEventListener('click', () => toggleTruckVisibility(truck.id));
+
+        const label = document.createElement('span');
+        label.className = 'fleet-name';
+        label.textContent = truck.id;
+
+        const onlyButton = document.createElement('button');
+        onlyButton.type = 'button';
+        onlyButton.className = 'fleet-only';
+        onlyButton.textContent = 'Only';
+        onlyButton.title = `Show only ${truck.id}`;
+        onlyButton.addEventListener('click', () => showOnlyTruck(truck.id));
+
+        item.append(visibilityButton, label, onlyButton);
+        legendEl.appendChild(item);
+    });
+}
+
+function toggleTruckVisibility(truckId) {
+    const truck = trucks.find(item => item.id === truckId);
+    if (!truck) return;
+    truck.visible = !truck.visible;
+    if (focusedTruckId !== null) {
+        focusedTruckId = null;
+        resetPlaybackScope();
+    }
+    renderFleetLegend();
+    draw();
+}
+
+function showOnlyTruck(truckId) {
+    const selectedTruck = trucks.find(truck => truck.id === truckId);
+    if (!selectedTruck) return;
+    trucks.forEach(truck => { truck.visible = truck.id === truckId; });
+    focusedTruckId = truckId;
+    resetPlaybackScope();
+    renderFleetLegend();
+    draw();
+}
+
+function showAllTrucks() {
+    trucks.forEach(truck => { truck.visible = true; });
+    focusedTruckId = null;
+    resetPlaybackScope();
+    renderFleetLegend();
+    draw();
+}
+
+function getPlaybackTrucks() {
+    if (focusedTruckId === null) return trucks;
+    const selectedTruck = trucks.find(truck => truck.id === focusedTruckId);
+    return selectedTruck ? [selectedTruck] : [];
+}
+
+function resetPlaybackScope() {
+    isPlaying = false;
+    cancelAnimationFrame(animationId);
+    lastTime = 0;
+    progress = 0;
+    maxProgress = getPlaybackTrucks().reduce(
+        (longestRoute, truck) => Math.max(longestRoute, truck.segments.length),
+        0
+    );
+    lastProductByTruck = {};
+    shownSwapNotifications = {};
+    clearAllNotifications();
+    updatePlayBtn();
     updateUI();
 }
 
@@ -722,24 +1010,97 @@ function getThemeColor(varName) {
     return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
 }
 
-function drawGrid() {
-    const gridSize = 40;
-    ctx.strokeStyle = getThemeColor('--grid-color');
+function drawMapBackground() {
+    // A lightweight, deterministic basemap keeps the visualizer self-contained
+    // while giving the routes a more concrete geographical setting.
+    const land = ctx.createLinearGradient(0, 0, width, height);
+    land.addColorStop(0, '#eef4e5');
+    land.addColorStop(0.55, '#f5f1df');
+    land.addColorStop(1, '#e9f1df');
+    ctx.fillStyle = land;
+    ctx.fillRect(0, 0, width, height);
+
+    // Agricultural and wooded patches.
+    const terrainPatches = [
+        [.12, .18, .2, .13, '#d9e9c5'], [.76, .17, .25, .15, '#d2e4bd'],
+        [.22, .76, .28, .18, '#e3dcb8'], [.78, .72, .22, .18, '#d7e8c7'],
+        [.48, .43, .16, .11, '#e5dfbf']
+    ];
+    terrainPatches.forEach(([x, y, radiusX, radiusY, color], index) => {
+        ctx.save();
+        ctx.translate(width * x, height * y);
+        ctx.rotate((index - 2) * .18);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, width * radiusX, height * radiusY, 0, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.restore();
+    });
+
+    // A river and its bank, positioned away from the center of most networks.
+    const riverPath = new Path2D();
+    riverPath.moveTo(width * .82, -20);
+    riverPath.bezierCurveTo(width * .68, height * .2, width * .92, height * .48, width * .72, height * .68);
+    riverPath.bezierCurveTo(width * .62, height * .79, width * .68, height * .93, width * .58, height + 20);
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(169, 205, 210, .5)';
+    ctx.lineWidth = Math.max(22, width * .026);
+    ctx.stroke(riverPath);
+    ctx.strokeStyle = 'rgba(122, 184, 204, .72)';
+    ctx.lineWidth = Math.max(13, width * .016);
+    ctx.stroke(riverPath);
+
+    // Small tree clusters provide visual scale without competing with nodes.
+    const treeClusters = [[.08,.42], [.15,.47], [.89,.3], [.92,.35], [.42,.1], [.47,.12], [.33,.88], [.38,.86]];
+    treeClusters.forEach(([x, y], index) => {
+        const cx = width * x;
+        const cy = height * y;
+        for (let tree = 0; tree < 4; tree++) {
+            const angle = tree * 1.7 + index;
+            ctx.beginPath();
+            ctx.arc(cx + Math.cos(angle) * 9, cy + Math.sin(angle) * 7, 4.5, 0, Math.PI * 2);
+            ctx.fillStyle = tree % 2 ? 'rgba(72, 122, 65, .32)' : 'rgba(104, 145, 76, .38)';
+            ctx.fill();
+        }
+    });
+
+    drawRoadNetwork();
+}
+
+function drawRoadNetwork() {
+    const roadSegments = new Map();
+    trucks.forEach(truck => {
+        truck.segments.forEach(([from, to]) => {
+            const key = [from, to].sort().join('|');
+            if (!roadSegments.has(key)) roadSegments.set(key, [from, to]);
+        });
+    });
+
+    const traceRoads = () => {
+        ctx.beginPath();
+        roadSegments.forEach(([from, to]) => {
+            const start = getCoords(from);
+            const end = getCoords(to);
+            ctx.moveTo(start.x, start.y);
+            ctx.lineTo(end.x, end.y);
+        });
+        ctx.stroke();
+    };
+
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.setLineDash([]);
+    ctx.strokeStyle = 'rgba(116, 111, 95, .32)';
+    ctx.lineWidth = 10;
+    traceRoads();
+    ctx.strokeStyle = 'rgba(255, 253, 244, .94)';
+    ctx.lineWidth = 7;
+    traceRoads();
+    ctx.strokeStyle = 'rgba(148, 139, 113, .42)';
     ctx.lineWidth = 1;
-
-    for (let x = 0; x <= width; x += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
-        ctx.stroke();
-    }
-
-    for (let y = 0; y <= height; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
-        ctx.stroke();
-    }
+    ctx.setLineDash([6, 8]);
+    traceRoads();
+    ctx.setLineDash([]);
 }
 
 function getStationSatisfaction(stationId) {
@@ -789,7 +1150,7 @@ function drawNode(id, type) {
     ctx.fillText(icon, x, y + 1);
 
     // Label
-    ctx.font = '600 11px Lato';
+    ctx.font = '600 11px Inter';
     ctx.fillStyle = getThemeColor('--text');
     ctx.fillText(id, x, y + 38);
 
@@ -821,7 +1182,7 @@ function drawNode(id, type) {
             ctx.fill();
 
             // Text
-            ctx.font = '500 9px Lato';
+            ctx.font = '500 9px Inter';
             ctx.fillStyle = getThemeColor('--text-dim');
             ctx.fillText(`${Math.round(totalDelivered)}/${Math.round(demand)}`, x, barY + 16);
         }
@@ -926,15 +1287,15 @@ function draw() {
 
     if (!dataLoaded) return;
 
-    drawGrid();
+    drawMapBackground();
 
     // Draw all routes first (background)
-    trucks.forEach(truck => {
+    trucks.filter(truck => truck.visible).forEach(truck => {
         if (truck.segments.length === 0) return;
 
-        ctx.strokeStyle = truck.color + '20';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = truck.color + (focusedTruckId === truck.id ? 'a8' : '70');
+        ctx.lineWidth = focusedTruckId === truck.id ? 4 : 2.5;
+        ctx.setLineDash([5, 5]);
         ctx.beginPath();
 
         truck.segments.forEach(([s, e]) => {
@@ -956,7 +1317,7 @@ function draw() {
     });
 
     // Draw trucks on top
-    trucks.forEach(truck => drawTruck(truck, progress));
+    trucks.filter(truck => truck.visible).forEach(truck => drawTruck(truck, progress));
 
     // Update overlay
     document.getElementById('overlayStatus').textContent =
@@ -1089,8 +1450,18 @@ function calculateCurrentExchangesAndDeliveries() {
     const productLines = solution.productLines || {};
     const segmentMeta = solution.segmentMeta || {};
     const productBase = detectProductIndexingBase(productLines, numProducts);
+    const playbackTrucks = getPlaybackTrucks();
+    const playbackStationVisits = {};
 
-    trucks.forEach((t, truckIdx) => {
+    playbackTrucks.forEach(truck => {
+        truck.segments.forEach(([, toNode]) => {
+            if (toNode?.startsWith('S')) {
+                playbackStationVisits[toNode] = (playbackStationVisits[toNode] || 0) + 1;
+            }
+        });
+    });
+
+    playbackTrucks.forEach(t => {
         const vehicleKey = t.id;
         const maxSegs = t.segments.length;
         const currentProgress = Math.min(progress, maxSegs);
@@ -1133,7 +1504,7 @@ function calculateCurrentExchangesAndDeliveries() {
                 if (explicitDelivery > 0 || demandForProduct > 0) {
                     const deliveryQty = explicitDelivery > 0
                         ? explicitDelivery
-                        : (demandForProduct / Math.max(1, stationVisits[stationId] || 1));
+                        : (demandForProduct / Math.max(1, playbackStationVisits[stationId] || 1));
                     if (stationDeliveriesPerProduct[stationId][activeProduct] !== undefined) {
                         stationDeliveriesPerProduct[stationId][activeProduct] += deliveryQty * frac;
                     } else {
@@ -1353,7 +1724,7 @@ function updateDepotInventoryPanel() {
     const numStations = instance.num_stations || 5;
 
     // Calculate withdrawals from depots based on solution loads and current progress
-    trucks.forEach((t, truckIdx) => {
+    getPlaybackTrucks().forEach(t => {
         const vehicleKey = t.id;
         const vehicleLoads = solution.depotLoads?.[vehicleKey] || [];
         const vehicleProducts = productLines[vehicleKey] || [];
