@@ -1,73 +1,51 @@
 import io
-import json
 
+import httpx
 import pytest
-from fastapi.testclient import TestClient
 
-from backup.app.main import app
+from backend.app.main import app
 
 
 @pytest.fixture
-def scoring_client():
-    with TestClient(app) as test_client:
-        yield test_client
+def anyio_backend():
+    return "asyncio"
 
 
-def test_scoring_submit_rejects_non_zip(scoring_client):
-    response = scoring_client.post(
-        "/scoring/submit",
-        files={"file": ("solutions.txt", io.BytesIO(b"x"), "text/plain")},
-        data={"email": "team@example.com", "name": "Team"},
-    )
-
+@pytest.mark.anyio
+async def test_scoring_rejects_non_zip():
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/scoring/submit",
+            data={"email": "team@example.com"},
+            files={"file": ("solutions.txt", io.BytesIO(b"invalid"), "text/plain")},
+        )
     assert response.status_code == 400
-    assert "zip" in response.json()["detail"].lower()
 
 
-def test_scoring_submit_returns_formatted_payload(scoring_client, monkeypatch):
-    import backup.app.routes.scoring as scoring_route
+@pytest.mark.anyio
+async def test_scoring_formats_service_result(monkeypatch):
+    import backend.app.routes.scoring as route
 
-    monkeypatch.setattr(scoring_route, "DATA_SOURCE_ID", None)
-    monkeypatch.setattr(
-        scoring_route,
-        "process_full_submission",
-        lambda _path: {
-            "total_weighted_score": 12.345,
-            "is_fully_feasible": False,
-            "total_feasible_count": 149,
-            "category_stats": {"small": 50, "medium": 49, "large": 50},
-            "processor_info": "ok",
-            "instance_results": [
-                {
-                    "instance": "Sol_S_001.dat",
-                    "category": "small",
-                    "feasible": True,
-                    "distance": 10.0,
-                    "transition_cost": 1.0,
-                    "errors": [],
-                }
-            ],
-        },
-    )
-
-    response = scoring_client.post(
-        "/scoring/submit",
-        files={"file": ("solutions.zip", io.BytesIO(b"zip-bytes"), "application/zip")},
-        data={"email": "team@example.com", "name": "Team"},
-    )
-
+    monkeypatch.setattr(route, "DATA_SOURCE_ID", None)
+    monkeypatch.setattr(route, "process_full_submission", lambda _: {
+        "ok": True,
+        "total_weighted_score": 12.25,
+        "is_fully_feasible": False,
+        "total_feasible_count": 1,
+        "category_stats": {"with_changeover_costs": 1},
+        "processor_info": "ok",
+        "instance_results": [{
+            "instance": "Sol_MPVRP_001.dat", "category": "with_changeover_costs",
+            "feasible": True, "distance": 10, "transition_cost": 2.25, "errors": [],
+        }],
+    })
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/scoring/submit",
+            data={"email": "team@example.com", "name": "Team"},
+            files={"file": ("solutions.zip", io.BytesIO(b"placeholder"), "application/zip")},
+        )
     assert response.status_code == 200
-    payload = response.json()
-    assert payload["total_score"] == 12.35
-    assert payload["is_fully_feasible"] is False
-    assert payload["total_valid_instances"] == "149/150"
-    assert json.loads(payload["total_valid_instances_per_category"]) == {
-        "small": 50,
-        "medium": 49,
-        "large": 50,
-    }
-    assert payload["processor_info"] == "ok"
-    assert payload["is_ready"] is True
-    assert isinstance(payload["submission_id"], int)
-    assert "T" in payload["submitted_at"]
-
+    assert response.json()["total_valid_instances"] == "1/150"

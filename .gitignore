@@ -221,3 +221,6 @@ mpvrp_scoring.db
 temp/
 
 pages/static/js/config.js
+.pdf-build/
+.codex/
+.agents/

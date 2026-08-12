@@ -1,11 +1,50 @@
 import pytest
 
-from backup.core.model.feasibility import verify_solution
-from backup.core.model.schemas import (
+from backend.core.model.feasibility import verify_solution
+from backend.core.model.schemas import (
     Camion, Depot, Garage, Station, Instance,
     ParsedSolutionVehicle, ParsedSolutionDat
 )
-from backup.core.model.utils import euclidean_distance
+from backend.core.model.utils import euclidean_distance
+
+
+def test_mass_conservation_is_enforced(sample_instance):
+    vehicle = ParsedSolutionVehicle(
+        vehicle_id=1,
+        nodes=[
+            {"kind": "garage", "id": 1, "qty": 0},
+            {"kind": "depot", "id": 1, "qty": 900},
+            {"kind": "station", "id": 1, "qty": 1000},
+            {"kind": "garage", "id": 1, "qty": 0},
+        ],
+        products=[(0, 0.0)] * 4,
+    )
+    solution = ParsedSolutionDat(
+        vehicles=[vehicle],
+        metrics={"used_vehicles": 1, "total_changes": 0, "total_switch_cost": 0, "distance_total": 0},
+    )
+    errors, _ = verify_solution(sample_instance, solution)
+    assert any("mass conservation" in error.lower() for error in errors)
+
+
+def test_initial_changeover_is_counted(sample_instance):
+    vehicle = ParsedSolutionVehicle(
+        vehicle_id=1,
+        nodes=[
+            {"kind": "garage", "id": 1, "qty": 0},
+            {"kind": "depot", "id": 1, "qty": 500},
+            {"kind": "station", "id": 1, "qty": 500},
+            {"kind": "garage", "id": 1, "qty": 0},
+        ],
+        products=[(0, 0.0), (1, 10.0), (1, 10.0), (1, 10.0)],
+    )
+    solution = ParsedSolutionDat(
+        vehicles=[vehicle],
+        metrics={"used_vehicles": 1, "total_changes": 1, "total_switch_cost": 10, "distance_total": 0},
+    )
+    _, computed = verify_solution(sample_instance, solution)
+    assert computed["total_changes"] == 1
+    assert computed["total_switch_cost"] == 10
 
 
 class TestVerifySolutionBasic:

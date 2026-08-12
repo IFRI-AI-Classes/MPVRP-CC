@@ -1,10 +1,5 @@
 const API_URL = window.APP_CONFIG?.API_URL;
 
-// ── Nav mobile ───────────────────────────────────────────
-document.getElementById('mobile-menu').addEventListener('click', () => {
-    document.getElementById('nav-links').classList.toggle('active');
-});
-
 // ── Init ─────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
     loadLeaderboard();
@@ -38,22 +33,25 @@ async function loadLeaderboard() {
 
         const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
 
-        tbody.innerHTML = data.map(row => `
-            <tr class="${row.rank <= 3 ? `rank-${row.rank}` : ''}">
-                <td>${medals[row.rank] ?? row.rank}</td>
-                <td>${row.team}</td>
-                <td><strong>${row.score.toFixed(2)}</strong></td>
-                <td>${row.instances_validated}</td>
-                <td>${formatDate(row.last_submission)}</td>
-            </tr>
-        `).join('');
+        tbody.replaceChildren(...data.map(row => {
+            const tr = document.createElement('tr');
+            tr.className = row.rank <= 3 ? 'bg-blue-50/40' : 'hover:bg-slate-50';
+            [medals[row.rank] ?? row.rank, row.team, Number(row.score).toFixed(2), row.instances_validated, formatDate(row.last_submission)]
+                .forEach((value, index) => {
+                    const td = document.createElement('td');
+                    td.className = `px-6 py-4 ${index === 2 ? 'font-semibold text-slate-950' : ''}`;
+                    td.textContent = String(value);
+                    tr.appendChild(td);
+                });
+            return tr;
+        }));
 
         countEl.innerText = `${data.length} Team${data.length > 1 ? 's' : ''} on the scoreboard`;
         stateEl.style.display = 'none';
         tableEl.style.display = 'table';
 
     } catch (err) {
-        stateEl.className = 'lb-state lb-error';
+        stateEl.className = 'p-10 text-center text-red-600';
         stateEl.innerText = "Unable to load leaderboard. Check the server is reachable.";
         console.error('Leaderboard error:', err);
     } finally {
