@@ -1,6 +1,4 @@
-# Solution Format Specification — MPVRP-CC
-
-*MPVRP-CC Team — benchmark specification*
+# Solution Format Specification
 
 > **Note:** This document details the file format used for MPVRP-CC solutions. To be validated, a solution must strictly follow the structure described below.
 
@@ -115,11 +113,3 @@ The time elapsed to generate the solution, in seconds (e.g., `0.245`).
 - One vehicle may serve a station-product pair at most once across its complete route.
 - Cumulative changeover costs and the six final metrics must agree with values recomputed by the verifier.
 
-## 6. Ex-post changeover evaluation
-
-A route produced from a zero-changeover instance can be evaluated afterward
-against the paired original matrix. The `mpvrp-reevaluate-changeovers` command
-preserves the route, products, loads, deliveries, distance, processor, and solve
-time. It changes only the cumulative values shown on product lines and the final
-number and total cost of product changes. By default, the source file is never
-overwritten; a repriced copy is created in a dedicated subdirectory.

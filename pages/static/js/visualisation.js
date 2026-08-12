@@ -49,31 +49,14 @@ let focusedTruckId = null;
 const TRUCK_COLORS = [
     '#2563eb', '#dc2626', '#16a34a', '#9333ea', '#ea580c', '#0891b2',
     '#db2777', '#4f46e5', '#65a30d', '#c026d3', '#0f766e', '#b45309',
-    '#1d4ed8', '#be123c', '#15803d', '#7e22ce', '#c2410c', '#0e7490',
-    '#a21caf', '#4338ca', '#4d7c0f', '#9d174d', '#0369a1', '#a16207'
+    '#03050a', '#ee99ae', '#15803d', '#7e22ce', '#c2410c', '#0e7490',
+    '#a21caf', '#cac538', '#4d7c0f', '#9d174d', '#0369a1', '#a16207'
 ];
 
-const EXAMPLE_INSTANCE = `2 1 1 3 2
-0 15
-15 0
-1 5000 1 1
-2 5000 1 2
-1 50 50 5000 4000
-1 0 0
-1 25 25 1500 1000
-2 75 25 1000 1500
-3 50 75 1500 1500`;
-
-const EXAMPLE_SOLUTION = `1: 1 - 1 [2500] - 1 (1500) - 2 (1000) - 1 [1500] - 3 (1500) - 1
-1: 0(0) - 0(0) - 0(0) - 0(0) - 1(15) - 1(15) - 1(15)
-2: 1 - 1 [2500] - 2 (500) - 3 (1500) - 1
-2: 1(0) - 1(0) - 1(0) - 0(15) - 0(15)
-2
-2
-30.00
-450.50
-example
-2.500`;
+const EXAMPLE_FILES = {
+    instance: '../data/examples/MPVRP_052_s9_d1_p2.dat',
+    solution: '../data/examples/Sol_052_s9_d1_p2.dat'
+};
 
 // ═══════════════════════════════════════════════════════════════
 // THEME MANAGEMENT
@@ -250,19 +233,49 @@ function validateSolution(value) {
     }
 }
 
-function loadExample() {
+async function loadExample() {
+    const button = document.getElementById('exampleButton');
+    const originalLabel = button?.textContent;
+    if (button) {
+        button.disabled = true;
+        button.textContent = 'Loading…';
+    }
+
     try {
-        instance = parseDatInstance(EXAMPLE_INSTANCE);
-        solution = parseDatSolution(EXAMPLE_SOLUTION);
-        validateInstance(instance);
-        validateSolution(solution);
-        updateFileStatus('instance', 'example-instance.dat');
-        updateFileStatus('solution', 'example-solution.dat');
+        const [instanceResponse, solutionResponse] = await Promise.all([
+            fetch(EXAMPLE_FILES.instance),
+            fetch(EXAMPLE_FILES.solution)
+        ]);
+
+        if (!instanceResponse.ok) throw new Error(`could not read ${EXAMPLE_FILES.instance} (${instanceResponse.status}).`);
+        if (!solutionResponse.ok) throw new Error(`could not read ${EXAMPLE_FILES.solution} (${solutionResponse.status}).`);
+
+        const [instanceContent, solutionContent] = await Promise.all([
+            instanceResponse.text(),
+            solutionResponse.text()
+        ]);
+        const parsedInstance = parseDatInstance(instanceContent);
+        const parsedSolution = parseDatSolution(solutionContent);
+        validateInstance(parsedInstance);
+        validateSolution(parsedSolution);
+
+        instance = parsedInstance;
+        solution = parsedSolution;
+        updateFileStatus('instance', EXAMPLE_FILES.instance.split('/').pop());
+        updateFileStatus('solution', EXAMPLE_FILES.solution.split('/').pop());
         clearFileError();
         initData();
         resize();
     } catch (error) {
-        showFileError('built-in example', error);
+        const localHint = window.location.protocol === 'file:'
+            ? ' Open the site through its local web server; browsers block fetch() from file:// pages.'
+            : '';
+        showFileError('data/examples', new Error(error.message + localHint));
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.textContent = originalLabel;
+        }
     }
 }
 
@@ -854,14 +867,20 @@ function toggleTruckVisibility(truckId) {
     const truck = trucks.find(item => item.id === truckId);
     if (!truck) return;
     truck.visible = !truck.visible;
-    focusedTruckId = null;
+    if (focusedTruckId !== null) {
+        focusedTruckId = null;
+        resetPlaybackScope();
+    }
     renderFleetLegend();
     draw();
 }
 
 function showOnlyTruck(truckId) {
+    const selectedTruck = trucks.find(truck => truck.id === truckId);
+    if (!selectedTruck) return;
     trucks.forEach(truck => { truck.visible = truck.id === truckId; });
     focusedTruckId = truckId;
+    resetPlaybackScope();
     renderFleetLegend();
     draw();
 }
@@ -869,8 +888,31 @@ function showOnlyTruck(truckId) {
 function showAllTrucks() {
     trucks.forEach(truck => { truck.visible = true; });
     focusedTruckId = null;
+    resetPlaybackScope();
     renderFleetLegend();
     draw();
+}
+
+function getPlaybackTrucks() {
+    if (focusedTruckId === null) return trucks;
+    const selectedTruck = trucks.find(truck => truck.id === focusedTruckId);
+    return selectedTruck ? [selectedTruck] : [];
+}
+
+function resetPlaybackScope() {
+    isPlaying = false;
+    cancelAnimationFrame(animationId);
+    lastTime = 0;
+    progress = 0;
+    maxProgress = getPlaybackTrucks().reduce(
+        (longestRoute, truck) => Math.max(longestRoute, truck.segments.length),
+        0
+    );
+    lastProductByTruck = {};
+    shownSwapNotifications = {};
+    clearAllNotifications();
+    updatePlayBtn();
+    updateUI();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1408,8 +1450,18 @@ function calculateCurrentExchangesAndDeliveries() {
     const productLines = solution.productLines || {};
     const segmentMeta = solution.segmentMeta || {};
     const productBase = detectProductIndexingBase(productLines, numProducts);
+    const playbackTrucks = getPlaybackTrucks();
+    const playbackStationVisits = {};
 
-    trucks.forEach((t, truckIdx) => {
+    playbackTrucks.forEach(truck => {
+        truck.segments.forEach(([, toNode]) => {
+            if (toNode?.startsWith('S')) {
+                playbackStationVisits[toNode] = (playbackStationVisits[toNode] || 0) + 1;
+            }
+        });
+    });
+
+    playbackTrucks.forEach(t => {
         const vehicleKey = t.id;
         const maxSegs = t.segments.length;
         const currentProgress = Math.min(progress, maxSegs);
@@ -1452,7 +1504,7 @@ function calculateCurrentExchangesAndDeliveries() {
                 if (explicitDelivery > 0 || demandForProduct > 0) {
                     const deliveryQty = explicitDelivery > 0
                         ? explicitDelivery
-                        : (demandForProduct / Math.max(1, stationVisits[stationId] || 1));
+                        : (demandForProduct / Math.max(1, playbackStationVisits[stationId] || 1));
                     if (stationDeliveriesPerProduct[stationId][activeProduct] !== undefined) {
                         stationDeliveriesPerProduct[stationId][activeProduct] += deliveryQty * frac;
                     } else {
@@ -1672,7 +1724,7 @@ function updateDepotInventoryPanel() {
     const numStations = instance.num_stations || 5;
 
     // Calculate withdrawals from depots based on solution loads and current progress
-    trucks.forEach((t, truckIdx) => {
+    getPlaybackTrucks().forEach(t => {
         const vehicleKey = t.id;
         const vehicleLoads = solution.depotLoads?.[vehicleKey] || [];
         const vehicleProducts = productLines[vehicleKey] || [];
