@@ -4,7 +4,7 @@ import tempfile
 
 import pytest
 
-from backup.core.model.utils import (
+from backend.core.model.utils import (
     euclidean_distance,
     parse_instance,
     compute_distances,
@@ -13,7 +13,7 @@ from backup.core.model.utils import (
     solution_node_key,
     parse_solution,
 )
-from backup.core.model.schemas import Instance
+from backend.core.model.schemas import Instance
 
 
 class TestEuclideanDistance:

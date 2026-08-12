@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from backup.database import notion
+from backend.database import notion
 
 
 class _FakePages:

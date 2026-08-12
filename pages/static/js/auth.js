@@ -1,10 +1,6 @@
 const API_URL = window.APP_CONFIG?.API_URL;
 const KNOWN_SUBMITTERS_KEY = 'mpvrp_known_submitter_emails';
 
-document.getElementById('mobile-menu').addEventListener('click', () => {
-    document.getElementById('nav-links').classList.toggle('active');
-});
-
 function showMessage(message, type = 'error') {
     const existing = document.getElementById('msg-banner');
     if (existing) existing.remove();
@@ -58,6 +54,12 @@ function rememberSubmitterEmail(email) {
 function isKnownSubmitter(email) {
     const normalized = email.trim().toLowerCase();
     return getKnownSubmitterEmails().includes(normalized);
+}
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"]/g, (character) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'
+    })[character]);
 }
 
 async function handleFileUpload(event) {
@@ -126,7 +128,7 @@ function displayResult(data) {
                     </tr>
                 </thead>
                 <tbody>
-                    <tr><td>Weighted total score</td><td><strong>${Number(data.total_score).toFixed(4)}</strong></td></tr>
+                    <tr><td>Official total score</td><td><strong>${Number(data.total_score).toFixed(4)}</strong></td></tr>
                     <tr><td>Valid solutions</td><td>${data.total_valid_instances}</td></tr>
                     <tr><td>Full feasibility</td><td>${data.is_fully_feasible ? 'Yes' : 'No'}</td></tr>
                 </tbody>
@@ -135,7 +137,7 @@ function displayResult(data) {
             ${data.processor_info ? `
             <details class="result-details result-details--warning">
                 <summary>ZIP structure report</summary>
-                <pre class="result-pre">${data.processor_info}</pre>
+                <pre class="result-pre">${escapeHtml(data.processor_info)}</pre>
             </details>` : ''}
 
             <details class="result-details">
@@ -150,13 +152,13 @@ function displayResult(data) {
                     <tbody>
                         ${data.instances_details.map(r => `
                             <tr class="${!r.feasible ? 'result-row--invalid' : ''}">
-                                <td>${r.instance}</td>
-                                <td>${r.category}</td>
+                            <td>${escapeHtml(r.instance)}</td>
+                            <td>${escapeHtml(r.category)}</td>
                                 <td>${r.feasible ? 'Yes' : 'No'}</td>
                                 <td>${r.distance ?? '—'}</td>
                                 <td>${r.transition_cost ?? '—'}</td>
                                 <td class="result-errors">
-                                    ${r.errors.length > 0 ? r.errors.join('<br>') : '—'}
+                                    ${r.errors.length > 0 ? r.errors.map(escapeHtml).join('<br>') : '—'}
                                 </td>
                             </tr>
                         `).join('')}

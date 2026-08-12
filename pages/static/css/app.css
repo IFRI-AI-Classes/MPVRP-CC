@@ -1,0 +1,61 @@
+:root { color-scheme: light; }
+html { scroll-behavior: smooth; }
+body { font-family: Inter, sans-serif; }
+h1, h2, h3, h4, .font-display { font-family: "Bricolage Grotesque", sans-serif; }
+.grid-noise {
+  background-image: linear-gradient(rgba(15, 23, 42, .045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, .045) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.tab-btn.active { background: #2563eb; color: white; }
+.status-message { margin-top: 1rem; border-radius: .75rem; padding: .9rem 1rem; font-size: .9rem; }
+.status-message.info { background: #eff6ff; color: #1d4ed8; }
+.status-message.success { background: #f0fdf4; color: #166534; }
+.status-message.error { background: #fef2f2; color: #b91c1c; }
+.verification-results { margin-top: 1.25rem; border: 1px solid #e2e8f0; border-radius: 1rem; padding: 1.25rem; }
+.results-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.result-status-badge { border-radius: 999px; padding: .35rem .7rem; font-size: .75rem; font-weight: 700; }
+.result-status-badge.feasible { background: #dcfce7; color: #166534; }
+.result-status-badge.infeasible { background: #fee2e2; color: #991b1b; }
+.results-section { margin-top: 1.25rem; }
+.errors-list { list-style: disc; padding-left: 1.25rem; color: #b91c1c; }
+.metrics-table { margin-top: .75rem; width: 100%; border-collapse: collapse; }
+.metrics-table th, .metrics-table td { border-bottom: 1px solid #e2e8f0; padding: .65rem; text-align: left; }
+.msg-banner { margin-top: 1rem; border-radius: .8rem; padding: .9rem 1rem; transition: opacity .3s; }
+.result-section { margin-top: 1.5rem; }
+.result-card { overflow: hidden; border: 1px solid #e2e8f0; border-radius: 1rem; background: white; padding: 1.5rem; }
+.result-metrics, .result-instances { margin-top: 1rem; width: 100%; border-collapse: collapse; font-size: .85rem; }
+.result-metrics th, .result-metrics td, .result-instances th, .result-instances td { border-bottom: 1px solid #e2e8f0; padding: .65rem; text-align: left; vertical-align: top; }
+.result-details { margin-top: 1rem; border: 1px solid #e2e8f0; border-radius: .75rem; padding: 1rem; overflow-x: auto; }
+.result-pre { margin-top: .75rem; white-space: pre-wrap; font-size: .8rem; }
+.result-row--invalid { background: #fff7f7; }
+.result-errors { max-width: 26rem; color: #b91c1c; }
+.markdown-body { color: #334155; font-size: 1rem; line-height: 1.8; }
+.markdown-body h1 { color: #0f172a; font-size: 2.25rem; line-height: 1.12; margin: 0 0 2rem; }
+.markdown-body h2 { color: #0f172a; font-size: 1.55rem; line-height: 1.25; margin: 2.5rem 0 1rem; }
+.markdown-body h3 { color: #172554; font-size: 1.15rem; margin: 2rem 0 .75rem; }
+.markdown-body p, .markdown-body ul, .markdown-body ol { margin: 0 0 1rem; }
+.markdown-body ul, .markdown-body ol { padding-left: 1.4rem; }
+.markdown-body ul { list-style: disc; }
+.markdown-body ol { list-style: decimal; }
+.markdown-body code { background: #eff6ff; color: #1d4ed8; border-radius: .35rem; padding: .12rem .35rem; font-size: .88em; }
+.markdown-body pre { overflow-x: auto; border: 1px solid #dbeafe; background: #0f172a; color: #e2e8f0; border-radius: 1rem; padding: 1.25rem; margin: 1.25rem 0; }
+.markdown-body pre code { background: transparent; color: inherit; padding: 0; }
+.markdown-body blockquote { border-left: 3px solid #2563eb; background: #eff6ff; padding: 1rem 1.25rem; margin: 1.5rem 0; border-radius: 0 .75rem .75rem 0; }
+.markdown-body table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: .92rem; }
+.markdown-body th, .markdown-body td { border: 1px solid #e2e8f0; padding: .7rem .8rem; text-align: left; }
+.markdown-body th { background: #f8fafc; color: #0f172a; }
+.markdown-body a { color: #2563eb; text-decoration: underline; text-underline-offset: 3px; }
+@media print {
+  @page { size: A4; margin: 16mm; }
+  .no-print, header, footer { display: none !important; }
+  body { background: white !important; }
+  main { max-width: none !important; padding: 0 !important; }
+  .print-shell { border: 0 !important; box-shadow: none !important; padding: 0 !important; }
+  .markdown-body { font-size: 10.5pt; color: #111827; }
+  .markdown-body h1 { font-size: 24pt; }
+  .markdown-body h2 { break-after: avoid; }
+  .markdown-body pre, .markdown-body table, .markdown-body blockquote { break-inside: avoid; }
+}

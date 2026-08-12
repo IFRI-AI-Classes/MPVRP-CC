@@ -1,6 +1,6 @@
 import pytest
 
-from backup.core.model.schemas import (
+from backend.core.model.schemas import (
     Camion, Depot, Garage, Station, Instance,
     ParsedSolutionVehicle, ParsedSolutionDat
 )

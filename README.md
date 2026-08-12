@@ -1,341 +1,110 @@
-# MPVRP-CC: Multi-Product Vehicle Routing Problem with Changeover Cost
+# MPVRP-CC platform
 
-A comprehensive platform for generating, verifying, and evaluating solutions to the **MPVRP-CC** problem (Multi-Product Vehicle Routing Problem with Changeover Cost).
+Research and competition platform for the **Multi-Product Vehicle Routing
+Problem with Split Deliveries and Changeover Costs**.
 
-## Table of Contents
+The repository deliberately separates two deployable surfaces:
 
-- [Overview](#overview)
-- [Features](#features)
-- [Problem Description](#problem-description)
-- [Project Structure](#project-structure)
-- [Installation](#installation)
-- [Usage](#usage)
-  - [Quick Start](#quick-start)
-  - [API Endpoints](#api-endpoints)
-  - [Web Interface](#web-interface)
-- [Development](#development)
-- [Testing](#testing)
-- [License](#license)
+- the static GitHub Pages frontend at the repository root and in `pages/`;
+- the FastAPI service and domain logic in `backend/`.
 
----
+The interactive route visualizer remains a standalone canvas application in
+`pages/visualisation.html`.
 
-## Overview
+## Benchmark scenarios
 
-MPVRP-CC is a research platform designed to support the Multi-Product Vehicle Routing Problem with Changeover Cost. It provides:
+`data/instances/` contains 150 one-to-one pairs:
 
-- **Instance Generation**: Automatically generate MPVRP-CC instances with customizable parameters
-- **Solution Verification**: Check the feasibility of proposed solutions
-- **Scoring & Evaluation**: Evaluate solutions across 150 test instances with detailed metrics
-- **Scoreboard & Leaderboard**: Track team performance and rankings
-- **Web Interface**: User-friendly frontend for submissions and visualization
+- `with_changeover_costs/` is the official dataset used for scoring;
+- `without_changeover_costs/` keeps the same UUID, fleet, locations, stocks and
+  demands, but replaces every transition cost by zero.
 
-This project is built using **FastAPI** for the backend and provides both REST API and web-based interfaces.
+The official score is the sum of `distance_total + total_switch_cost` across the
+150 original-cost instances. A missing or infeasible solution receives a penalty
+of `100000`.
 
----
+See [`docs/problem.md`](docs/problem.md),
+[`docs/instance_format.md`](docs/instance_format.md), and
+[`docs/solution_format.md`](docs/solution_format.md) for the canonical contract.
 
-## Features
+## Structure
 
-✅ **Instance Generation**
-- Generate random MPVRP-CC instances with configurable parameters
-- Support for vehicles, depots, garages, stations, and products
-- Customizable capacity, demand, and transition cost ranges
-
-✅ **Solution Verification**
-- Validate solution feasibility against instance constraints
-- Detailed error reporting and metrics computation
-- Support for multiple product deliveries and vehicle capacity constraints
-
-✅ **Batch Evaluation**
-- Score solutions against 150 standardized test instances
-- Multi-category evaluation (small, medium, large instances)
-- Detailed result reporting per instance
-
-✅ **User Management & Authentication**
-- Team registration and authentication
-- Submission history tracking
-- Secure API with JWT tokens
-
-✅ **Visualization & Dashboard**
-- Scoreboard with team rankings
-- Submission history
-- Solution visualization interface
-- Real-time results updates
-
----
-
-## Problem Description
-
-The **Multi-Product Vehicle Routing Problem with Changeover Cost (MPVRP-CC)** is an extension of the Vehicle Routing Problem where:
-
-1. **Multiple Products**: Vehicles must deliver multiple product types to stations
-2. **Vehicle Capacities**: Each vehicle has a maximum capacity constraint
-3. **Changeover Costs**: Switching between products in a vehicle's route incurs a cost
-4. **Depots & Garages**: Vehicles start/end at garages and load/unload at depots
-5. **Station Demands**: Each station has specific demand for each product
-
-For detailed problem definition, refer to the documentation in the `docs/` folder.
-
----
-
-## Project Structure
-
-```
-MPVRP-CC/
-├── backup/                    # Main application source code
-│   ├── app/                   # FastAPI application
-│   │   ├── main.py           # Main application setup
-│   │   ├── schemas.py        # Pydantic models
-│   │   ├── utils.py          # Utility functions
-│   │   └── routes/           # API endpoints
-│   │       ├── generator.py  # Instance generation
-│   │       ├── model.py      # Solution verification
-│   │       ├── scoring.py    # Scoring & evaluation
-│   │       ├── scoreboard.py # Leaderboard
-│   │       └── auth.py       # Authentication
-│   ├── core/                 # Core business logic
-│   │   ├── generator/        # Instance generation logic
-│   │   ├── model/            # Solution validation logic
-│   │   ├── scoring/          # Scoring calculations
-│   │   └── auth/             # Authentication utilities
-│   └── database/             # Database models and setup
-│       ├── db.py             # Database connection
-│       └── models_db.py      # SQLAlchemy models
-├── data/                      # Data and instances
-│   ├── instances/            # Test instances (small, medium, large)
-│   ├── solutions/            # Reference solutions
-│   ├── test/                 # Test instances
-│   └── zips/                 # Compressed instance collections
-├── pages/                     # Web interface
-│   ├── scoreboard.html       # Scoreboard page
-│   ├── submission.html       # Submission page
-│   ├── visualisation.html    # Solution visualization
-│   └── static/               # CSS, JavaScript, images
-├── docs/                      # Documentation
-│   ├── problem_definition.pdf
-│   ├── instance_description.pdf
-│   └── solution_description.pdf
-├── tests/                     # Test suite
-│   ├── test_api.py
-│   ├── test_feasibility.py
-│   ├── test_instance_generator.py
-│   ├── test_instance_verificator.py
-│   ├── test_integration.py
-│   ├── conftest.py
-│   └── fixtures/             # Test data
-├── requirements.txt          # Python dependencies
-├── pyproject.toml           # Project metadata
-├── pytest.ini               # Pytest configuration
-└── index.html               # Main entry point
+```text
+backend/
+  app/                 FastAPI application and HTTP routes
+  core/generation/     structured random instance generation
+  core/model/          instance/solution parsing and strict feasibility checks
+  core/scoring/        secure ZIP ingestion and official evaluation
+  core/experiments/    paired scenarios and ex-post changeover repricing
+  database/            Notion persistence adapter
+data/instances/        paired benchmark datasets
+docs/                  Markdown sources used by the static documentation pages
+pages/                 GitHub Pages UI and JavaScript clients
+tests/                 unit and integration tests
 ```
 
----
+## Backend setup
 
-## Installation
-
-### Prerequisites
-
-- Python 3.12+
-- `uv` package manager (recommended)
-- `pip` (optional, for `requirements.txt` workflow)
-
-### Setup
-
-1. **Clone the repository**:
-   ```bash
-   git clone <repository-url>
-   cd MPVRP-CC
-   ```
-
-2. **Install dependencies (recommended with uv)**:
-   ```bash
-   uv sync
-   ```
-
-   Optional `pip` workflow:
-   ```bash
-   python3.12 -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
-
-3. **Set up environment variables** (if needed):
-   Create a `.env` file in the root directory:
-   ```bash
-   # Example .env
-   SECRET_KEY=your-secret-key-here
-   ```
-
----
-
-## Usage
-
-### Quick Start
-
-From the project root, launch the API with `uv`:
+Python 3.12 and `uv` are recommended.
 
 ```bash
-export SECRET_KEY=your-secret-key-here
-uv run uvicorn backup.app.main:app --host 0.0.0.0 --port 8000 --workers 2
+uv sync
+uv run uvicorn backend.app.main:app --reload
 ```
 
-After startup:
+The API is available on `http://127.0.0.1:8000`; OpenAPI documentation is at
+`/docs`.
 
-- API: `http://localhost:8000`
-- Docs: `http://localhost:8000/docs`
+Configure deployments with:
 
-### Docker
+```dotenv
+FRONTEND_DEV_URL=http://127.0.0.1:5500
+FRONTEND_PROD_URL=https://your-org.github.io
+FRONTEND_PROD_URL_2=https://your-custom-domain.example
+NOTION_TOKEN=secret_...
+NOTION_DATABASE_ID=...
+NOTION_DATA_SOURCE_ID=...
+```
 
-Build and run with Docker:
+Notion remains the source of truth for participant score, feasible-solution
+count, submission date and rank.
+
+## Static frontend
+
+The frontend has no build requirement. Serve the repository root with any static
+server, for example:
+
+```bash
+python -m http.server 5500
+```
+
+Create the runtime API configuration before publishing:
+
+```bash
+API_URL=https://api.example.org ./generate_config.sh
+```
+
+The UI loads Tailwind CSS and the Inter/Bricolage Grotesque web fonts from their
+CDNs. Documentation pages fetch their Markdown source at runtime. The
+specification page provides an A4 print view; its “Download as PDF” action opens
+the browser print dialog, where it can be saved as PDF.
+
+## Tests
+
+```bash
+uv run pytest
+```
+
+The suite validates the API, strict solution checks, generator, ZIP safety,
+Notion adapter and all 150 paired benchmark files.
+
+## Docker
 
 ```bash
 docker build -t mpvrp-cc .
-docker run --rm -p 8000:8000 -e SECRET_KEY=your-secret-key-here mpvrp-cc
+docker run --rm -p 8000:8000 --env-file .env mpvrp-cc
 ```
-
-### Web Interface
-
-1. **Start the development server**:
-   ```bash
-   uv run uvicorn backup.app.main:app --reload
-   ```
-   
-   The API will be available at `http://localhost:8000`
-   - Interactive API docs: `http://localhost:8000/docs`
-   - Web interface: Open `index.html` or navigate to the pages folder
-
-2. **Access the Web Pages**:
-   - **Scoreboard**: View team rankings and results
-   - **Submission**: Upload solutions for evaluation
-   - **Visualization**: Visualize instance and solution data
-
----
-
-## Development
-
-### Project Dependencies
-
-Key dependencies include:
-
-- **fastapi**: Web framework for building the API
-- **uvicorn**: ASGI server
-- **pydantic**: Data validation
-- **sqlalchemy**: Database ORM
-- **pulp**: Linear programming (optimization)
-- **networkx**: Graph algorithms
-- **numpy**: Numerical computing
-- **pytest**: Testing framework
-- **python-jose**: JWT authentication
-- **passlib**: Password hashing
-
-### Running Tests
-
-```bash
-# Run all tests
-uv run pytest
-
-# Run with coverage
-uv run pytest --cov=backup tests/
-
-# Run specific test file
-uv run pytest tests/test_integration.py
-
-# Run specific test
-uv run pytest tests/test_api.py::TestApiEndpointsWithTestClient::test_health_endpoint
-```
-
-### Code Structure Guidelines
-
-- **Core Logic**: `backup/core/` - Pure business logic without dependencies
-- **API Layer**: `backup/app/routes/` - HTTP request handling
-- **Database**: `backup/database/` - Data persistence
-- **Tests**: `tests/` - Unit and integration tests
-
----
-
-## Data Formats
-
-### Instance Format
-
-Instances follow the `.dat` format with the following structure:
-```
-Number of products, vehicles, depots, garages, stations
-Coordinates and parameters for each node
-Capacity constraints
-Demand matrices
-Transition costs between products
-```
-
-See `docs/instance_description.pdf` for detailed specification.
-
-### Solution Format
-
-Solutions must follow the naming convention:
-```
-Sol_MPVRP_{id_instance}_s{nb_stations}_d{nb_depots}_p{nb_produits}.dat
-```
-
-Structure:
-```
-Vehicle routes with:
-- Garage → Depot [load] → Stations (deliver) → Depot [unload] → Garage
-- Product changeover information
-- Delivery quantities
-```
-
-See `data/solutions/README.md` for detailed solution format specification.
-
----
-
-## Testing
-
-The project includes comprehensive test coverage:
-
-- **Unit Tests**: Core functionality and utilities
-- **Integration Tests**: End-to-end workflows
-- **API Tests**: HTTP endpoint validation
-- **Feasibility Tests**: Solution validation logic
-- **Instance Tests**: Instance generation and verification
-
-Run tests with pytest:
-```bash
-uv run pytest
-```
-
-Generate coverage report:
-```bash
-uv run pytest --cov=backup --cov-report=html
-```
-
----
-
-## Contributing
-
-1. Create a feature branch: `git checkout -b feature/your-feature`
-2. Commit changes: `git commit -am 'Add new feature'`
-3. Push to branch: `git push origin feature/your-feature`
-4. Submit a pull request
-
----
 
 ## License
 
-This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
-
----
-
-## Contact & Support
-
-For issues, questions, or contributions, please refer to the project documentation in the `docs/` folder or contact the development team.
-
----
-
-## Changelog
-
-### v0.1.0
-- Initial release
-- Instance generation
-- Solution verification
-- Scoring and leaderboard system
-- Web interface for submissions
-- REST API with comprehensive endpoints
-
+See [`LICENSE`](LICENSE).

@@ -10,26 +10,10 @@ import pytest
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
-from backup.core.model.schemas import (
+from backend.core.model.schemas import (
     Camion, Depot, Garage, Station, Instance,
     ParsedSolutionVehicle, ParsedSolutionDat
 )
-
-
-# ============================================================================
-# API TEST CLIENT
-# ============================================================================
-
-@pytest.fixture
-def client():
-    """Provide a TestClient for API tests."""
-    try:
-        from fastapi.testclient import TestClient
-        from backup.app.main import app
-        with TestClient(app) as test_client:
-            yield test_client
-    except ImportError:
-        pytest.skip("fastapi testclient not available")
 
 
 # ============================================================================
@@ -43,7 +27,7 @@ def sample_camion():
         id="K1",
         capacity=10000.0,
         garage_id="G1",
-        initial_product=1
+        initial_product=0
     )
 
 

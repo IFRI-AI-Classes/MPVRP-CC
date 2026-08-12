@@ -81,7 +81,7 @@ pytest -m "not slow"
 ### Run with Coverage
 
 ```bash
-pytest --cov=backup --cov-report=html
+pytest --cov=backend --cov-report=html
 ```
 
 This generates an HTML coverage report in `htmlcov/`.
@@ -155,7 +155,7 @@ Tests are designed to work in CI/CD pipelines:
 
 ```bash
 # Run all tests with coverage for CI
-pytest --cov=backup --cov-report=xml -v
+pytest --cov=backend --cov-report=xml -v
 
 # Run quick tests only
 pytest -m "not slow" -v
