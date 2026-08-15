@@ -48,6 +48,8 @@ h1, h2, h3, h4, .font-display { font-family: "Bricolage Grotesque", sans-serif; 
 .markdown-body th, .markdown-body td { border: 1px solid #e2e8f0; padding: .7rem .8rem; text-align: left; }
 .markdown-body th { background: #f8fafc; color: #0f172a; }
 .markdown-body a { color: #2563eb; text-decoration: underline; text-underline-offset: 3px; }
+.markdown-body .katex-display { margin: 1.75rem 0; overflow-x: auto; overflow-y: hidden; padding: .5rem 0; }
+.markdown-body .katex { color: #0f172a; font-size: 1.05em; }
 .brand-icon { display: inline-flex; height: 2.6rem; width: 2.6rem; align-items: center; justify-content: center; border-radius: .85rem; background: #0f172a; color: white; transition: background-color .2s, transform .2s; }
 .brand-icon:hover { background: #2563eb; transform: translateY(-1px); }
 .brand-icon svg { height: 1.45rem; width: 1.45rem; }

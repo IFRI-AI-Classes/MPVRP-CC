@@ -52,7 +52,9 @@ The initial configuration of each vehicle is part of the instance. The first loa
 
 A station's demand for one product may be larger than a vehicle's capacity or may be more efficiently shared among several vehicles. The problem therefore allows **split deliveries**: several vehicles may contribute to the same station-product demand.
 
-The full requested quantity must still be delivered. A single vehicle may serve a given station-product pair at most once during its complete schedule.
+The full requested quantity must still be delivered. A vehicle may visit the same station several times only when those visits concern different products. For any given product, that vehicle may serve the station at most once during its complete schedule.
+
+For example, a vehicle may visit station 4 once with product 1 and return later with product 2. It may not return to station 4 a second time with product 1. If the demand for product 1 must be split, another vehicle has to deliver the remaining quantity.
 
 ## 6. Objective
 
@@ -60,6 +62,30 @@ The objective is to minimize the total of:
 
 - the distance traveled by the fleet;
 - the operational transition costs incurred during initial and subsequent loading operations.
+
+Mathematically, the objective can be written as:
+
+$$
+\min Z =
+\underbrace{\sum_{k \in K}\sum_{(i,j) \in A} d_{ij}\,n_{ijk}}_{\text{total travel distance}}
++
+\underbrace{\sum_{k \in K^{+}}\left(
+C_{p_k^{0},p_{k1}}
++
+\sum_{t=2}^{|T_k|} C_{p_{k,t-1},p_{kt}}
+\right)}_{\text{initial and subsequent loading-transition costs}}
+$$
+
+where:
+
+- $K$ is the set of vehicles and $K^{+}$ is the set of vehicles that perform at least one trip;
+- $A$ is the set of possible travel arcs;
+- $d_{ij}$ is the distance between locations $i$ and $j$;
+- $n_{ijk}$ is the number of times vehicle $k$ travels from $i$ to $j$;
+- $T_k$ is the ordered set of trips performed by vehicle $k$;
+- $p_k^{0}$ is the initial product configuration of vehicle $k$;
+- $p_{kt}$ is the product loaded by vehicle $k$ for trip $t$;
+- $C_{pq}$ is the preparation and loading-transition cost from configuration $p$ to loaded product $q$.
 
 This creates the central trade-off of the problem. The shortest routes are not always the least expensive: a slightly longer plan may reduce costly preparations, while a compact route may require more product transitions or loading setups.
 
@@ -72,6 +98,7 @@ A solution is feasible when:
 - quantities loaded at each depot remain within available stocks;
 - every trip carries exactly one product;
 - a station is visited only for a product it requires;
+- each vehicle visits a station at most once for any given product, although it may return with a different product;
 - each used vehicle starts and ends at its home garage;
 - consecutive trips form a complete, connected schedule.
 

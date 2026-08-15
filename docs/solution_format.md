@@ -91,5 +91,5 @@ A valid solution must respect all of the following conditions:
 - the quantity loaded for a trip equals the quantity delivered and does not exceed vehicle capacity;
 - depot stocks remain non-negative;
 - every station-product demand is met exactly;
-- one vehicle serves a given station-product pair at most once;
+- one vehicle serves a given station-product pair at most once across all its trips; it may revisit the same station only to deliver another product;
 - cumulative transition costs and final metrics match the routes described in the file.

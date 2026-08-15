@@ -120,6 +120,8 @@ ID X Y Demand_P1 Demand_P2 ... Demand_Pn
 
 Demand values must be finite and non-negative, and every station must request at least one product. Deliveries may be split between vehicles, but each station-product demand must be fully satisfied.
 
+A vehicle may serve a station only once for the same product over its complete schedule. It may return to that station on another trip to deliver a different product. Consequently, when a station-product demand is split, each contributing share must be assigned to a different vehicle.
+
 ## 10. Complete example
 
 ```text

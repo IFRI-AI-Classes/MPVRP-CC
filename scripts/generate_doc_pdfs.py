@@ -17,6 +17,7 @@ DOCUMENTS = (
     ("instance_format.md", "instance_format.pdf", "MPVRP-CC — Instance format"),
     ("solution_format.md", "solution_format.pdf", "MPVRP-CC — Solution format"),
 )
+KATEX_VERSION = "0.16.22"
 
 
 def inline_markup(text: str) -> str:
@@ -122,9 +123,21 @@ def main() -> None:
         for source_name, output_name, title in DOCUMENTS:
             body = markdown_to_html((DOCS / source_name).read_text(encoding="utf-8"))
             source = temporary / f"{source_name}.html"
-            source.write_text(f'<!doctype html><html lang="en"><head><meta charset="utf-8"><title>{html.escape(title)}</title><style>{STYLE}</style></head><body>{body}</body></html>', encoding="utf-8")
+            source.write_text(
+                f'<!doctype html><html lang="en"><head><meta charset="utf-8">'
+                f'<title>{html.escape(title)}</title>'
+                f'<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@{KATEX_VERSION}/dist/katex.min.css">'
+                f'<style>{STYLE}</style></head><body>{body}'
+                f'<script src="https://cdn.jsdelivr.net/npm/katex@{KATEX_VERSION}/dist/katex.min.js"></script>'
+                f'<script src="https://cdn.jsdelivr.net/npm/katex@{KATEX_VERSION}/dist/contrib/auto-render.min.js"></script>'
+                '<script>renderMathInElement(document.body,{delimiters:['
+                '{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false}'
+                '],throwOnError:false});</script></body></html>',
+                encoding="utf-8",
+            )
             subprocess.run([
                 chrome, "--headless", "--disable-gpu", "--no-sandbox",
+                "--virtual-time-budget=5000",
                 f"--user-data-dir={profile}", "--no-pdf-header-footer",
                 f"--print-to-pdf={DOCS / output_name}", source.as_uri(),
             ], check=True)

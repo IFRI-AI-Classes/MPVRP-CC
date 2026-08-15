@@ -28,6 +28,11 @@ The official score is the sum of `distance_total + total_switch_cost` across the
 150 original-cost instances. A missing or infeasible solution receives a penalty
 of `100000`.
 
+A vehicle may visit a station at most once for a given product across its entire
+schedule. It may return to the same station on another trip only when serving a
+different product. Split deliveries for one station-product pair must therefore
+be shared between distinct vehicles.
+
 See [`docs/problem.md`](docs/problem.md),
 [`docs/instance_format.md`](docs/instance_format.md), and
 [`docs/solution_format.md`](docs/solution_format.md) for the canonical contract.
