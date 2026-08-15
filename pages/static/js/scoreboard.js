@@ -35,7 +35,7 @@ async function loadLeaderboard() {
 
         tbody.replaceChildren(...data.map(row => {
             const tr = document.createElement('tr');
-            tr.className = row.rank <= 3 ? 'bg-blue-50/40' : 'hover:bg-slate-50';
+            tr.className = row.rank <= 3 ? 'bg-[#fff0eb]' : 'hover:bg-stone-50';
             [medals[row.rank] ?? row.rank, row.team, Number(row.score).toFixed(2), row.instances_validated, formatDate(row.last_submission)]
                 .forEach((value, index) => {
                     const td = document.createElement('td');

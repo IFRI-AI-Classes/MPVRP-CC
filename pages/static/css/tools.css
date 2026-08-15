@@ -34,12 +34,12 @@
 }
 
 .tab-btn:hover {
-    color: #3c27f5;
+    color: #F4320B;
 }
 
 .tab-btn.active {
-    color: #3c27f5;
-    border-bottom-color: #3c27f5;
+    color: #F4320B;
+    border-bottom-color: #F4320B;
 }
 
 /* Tab Content */
@@ -131,7 +131,7 @@
 .form-group input[type="number"]:focus,
 .form-group input[type="file"]:focus {
     outline: none;
-    border-color: #3c27f5;
+    border-color: #F4320B;
     box-shadow: 0 0 0 3px rgba(60, 39, 245, 0.12);
 }
 
@@ -151,7 +151,7 @@
 .btn-submit {
     display: inline-block;
     padding: 12px 32px;
-    background-color: #3c27f5;
+    background-color: #F4320B;
     color: white;
     border: none;
     border-radius: 6px;
@@ -314,7 +314,7 @@
     width: 14px;
     height: 14px;
     border: 2px solid #f3f3f3;
-    border-top: 2px solid #3c27f5;
+    border-top: 2px solid #F4320B;
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
@@ -334,7 +334,7 @@
     margin-top: 20px;
     padding: 10px 16px;
     background-color: #e8eaf6;
-    color: #3c27f5;
+    color: #F4320B;
     text-decoration: none;
     border-radius: 6px;
     font-size: 14px;
@@ -375,4 +375,3 @@
         padding: 8px 10px;
     }
 }
-

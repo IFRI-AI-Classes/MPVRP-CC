@@ -1,6 +1,7 @@
 const target = document.querySelector('[data-markdown-target]');
 const buttons = [...document.querySelectorAll('[data-markdown-source]')];
 const toc = document.querySelector('[data-toc-target]');
+const pdfDownload = document.querySelector('[data-pdf-download]');
 
 function slugify(value) {
   return value
@@ -31,6 +32,40 @@ function buildTableOfContents(documentId) {
   document.querySelector('[data-toc-shell]')?.classList.toggle('hidden', headings.length === 0);
 }
 
+function renderMarkdownWithMath(markdown) {
+  const expressions = [];
+
+  function placeholder(expression, displayMode) {
+    const index = expressions.push({ expression: expression.trim(), displayMode }) - 1;
+    const tag = displayMode ? 'div' : 'span';
+    return `<${tag} data-math-index="${index}"></${tag}>`;
+  }
+
+  // Protect LaTeX before Markdown parsing so backslashes, braces and underscores
+  // reach KaTeX exactly as they appear in the source document.
+  let protectedMarkdown = markdown.replace(/\$\$([\s\S]*?)\$\$/g, (_, expression) => (
+    `\n${placeholder(expression, true)}\n`
+  ));
+  protectedMarkdown = protectedMarkdown.replace(/\$([^$\n]+?)\$/g, (_, expression) => (
+    placeholder(expression, false)
+  ));
+
+  target.innerHTML = marked.parse(protectedMarkdown, { gfm: true });
+  target.querySelectorAll('[data-math-index]').forEach((element) => {
+    const math = expressions[Number(element.dataset.mathIndex)];
+    if (!math) return;
+    if (typeof katex === 'undefined') {
+      element.textContent = math.displayMode ? `$$${math.expression}$$` : `$${math.expression}$`;
+      return;
+    }
+    katex.render(math.expression, element, {
+      displayMode: math.displayMode,
+      throwOnError: false,
+      strict: false,
+    });
+  });
+}
+
 async function renderMarkdown(button) {
   if (!target || !button) return;
   buttons.forEach((item) => {
@@ -43,10 +78,17 @@ async function renderMarkdown(button) {
   });
   target.innerHTML = '<p class="text-slate-500">Loading documentation…</p>';
   try {
-    const response = await fetch(button.dataset.markdownSource);
+    const sourceUrl = new URL(button.dataset.markdownSource, document.baseURI);
+    sourceUrl.searchParams.set('v', '20260815-2');
+    const response = await fetch(sourceUrl, { cache: 'no-store' });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const markdown = await response.text();
-    target.innerHTML = marked.parse(markdown, { gfm: true });
+    renderMarkdownWithMath(markdown);
+    if (pdfDownload) {
+      pdfDownload.href = button.dataset.pdfSource;
+      pdfDownload.download = button.dataset.pdfSource.split('/').pop();
+      pdfDownload.setAttribute('aria-label', `Download ${button.textContent.trim()} as PDF`);
+    }
     buildTableOfContents(button.dataset.documentId);
     document.title = `${button.textContent.trim()} — MPVRP-CC`;
     history.replaceState(null, '', `#${button.dataset.documentId}`);

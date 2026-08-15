@@ -47,7 +47,7 @@ let hoveredNode = null;
 let focusedTruckId = null;
 
 const TRUCK_COLORS = [
-    '#2563eb', '#dc2626', '#16a34a', '#9333ea', '#ea580c', '#0891b2',
+    '#F4320B', '#dc2626', '#16a34a', '#9333ea', '#ea580c', '#0891b2',
     '#db2777', '#4f46e5', '#65a30d', '#c026d3', '#0f766e', '#b45309',
     '#03050a', '#ee99ae', '#15803d', '#7e22ce', '#c2410c', '#0e7490',
     '#a21caf', '#cac538', '#4d7c0f', '#9d174d', '#0369a1', '#a16207'
