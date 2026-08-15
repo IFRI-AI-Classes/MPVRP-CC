@@ -7,6 +7,7 @@ const activePage = {
   'visualisation.html': 'visualisation',
   'scoreboard.html': 'scoreboard',
   'submission.html': 'submission',
+  'about.html': 'about',
 }[pageName] || 'home';
 
 const navigationItems = [
@@ -14,6 +15,7 @@ const navigationItems = [
   ['tools', 'Tools', `${siteBase}pages/tools.html`],
   ['visualisation', 'Visualizer', `${siteBase}pages/visualisation.html`],
   ['scoreboard', 'Leaderboard', `${siteBase}pages/scoreboard.html`],
+  ['about', 'About', `${siteBase}pages/about.html`],
 ];
 
 const existingHeader = document.querySelector('body > header');

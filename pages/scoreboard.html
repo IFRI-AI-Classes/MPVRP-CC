@@ -11,7 +11,7 @@
   <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter'],display:['Bricolage Grotesque']}}}}</script>
   <link rel="stylesheet" href="static/css/app.css?v=20260815-orange">
 </head>
-<body class="bg-[#eee9e1] text-stone-900">
+<body class="bg-white text-stone-900">
   <header aria-label="Site navigation"></header>
   <main class="mx-auto max-w-6xl px-5 py-14 lg:px-8">
     <div class="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
@@ -20,9 +20,9 @@
         <p class="mt-4 text-stone-600">Current recorded submission per participant. Lower scores are better.</p>
         <p id="lb-count" class="mt-2 text-sm font-semibold text-[#F4320B]"></p>
       </div>
-      <button id="refresh-btn" onclick="loadLeaderboard()" class="rounded-full border border-stone-300 bg-[#fffaf5] px-5 py-3 text-sm font-semibold hover:border-[#F4320B]">↻ Refresh</button>
+      <button id="refresh-btn" onclick="loadLeaderboard()" class="rounded-full border border-stone-300 bg-white px-5 py-3 text-sm font-semibold hover:border-[#F4320B]">↻ Refresh</button>
     </div>
-    <div class="mt-10 overflow-hidden rounded-2xl border border-stone-200 bg-[#fffaf5] shadow-sm">
+    <div class="mt-10 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
       <div id="lb-state" class="p-10 text-center text-stone-500">Loading scoreboard…</div>
       <div class="overflow-x-auto">
         <table id="leaderboard-table" class="w-full text-left text-sm" style="display:none">
@@ -32,7 +32,7 @@
       </div>
     </div>
   </main>
-  <footer data-site-footer class="border-t border-stone-300 bg-[#e5ded4]"></footer>
+  <footer data-site-footer class="border-t border-stone-300 bg-white"></footer>
   <script src="static/js/config.js"></script>
   <script src="static/js/site.js?v=20260815-orange-2"></script>
   <script src="static/js/scoreboard.js"></script>

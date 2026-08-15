@@ -2,12 +2,12 @@
   color-scheme: light;
   --accent: #F4320B;
   --accent-dark: #cf2808;
-  --accent-soft: #fff0eb;
+  --accent-soft: #fff;
 }
 html { scroll-behavior: smooth; }
 body { font-family: Inter, sans-serif; }
-.has-floating-nav { padding-top: 4.5rem; background-color: #eee9e1; }
-.has-floating-nav > footer { background-color: #e5ded4 !important; }
+.has-floating-nav { padding-top: 4.5rem; background-color: #fff !important; }
+.has-floating-nav > footer { background-color: #fff !important; }
 .floating-site-header { pointer-events: none; }
 .floating-site-header nav { pointer-events: auto; }
 .floating-site-header .brand-icon { height: 2.4rem; width: 2.4rem; border-radius: 999px; background: var(--accent); }
