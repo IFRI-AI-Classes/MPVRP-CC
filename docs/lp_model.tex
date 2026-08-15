@@ -59,23 +59,21 @@
 \maketitle
 
 \begin{abstract}
-This document states the mixed-integer linear programming model implemented in
-\texttt{mpvrp\_cc/optimization/milp\_solver.py} for the Multi-Product Vehicle Routing Problem with Split
-Deliveries and Changeover Costs (MPVRP-CC). Each vehicle may perform a bounded
+This document presents a mixed-integer linear programming formulation for the
+Multi-Product Vehicle Routing Problem with Split Deliveries and Changeover
+Costs (MPVRP-CC). Each vehicle may perform a bounded
 number of mini-routes. A mini-route starts at one depot, loads one product,
 visits one or more stations, and ends at one depot. The model minimizes travel
 distance, empty depot transfers, garage access and return distance, and product
-changeover costs. The formulation also enforces depot stock limits and prevents
+preparation and loading-transition costs. The formulation also enforces depot stock limits and prevents
 the same vehicle from visiting the same station more than once for the same
 product.
 \end{abstract}
 
 \section{Problem Setting}
 
-Let \(R\) be the maximum number of mini-routes allowed for each vehicle. In the
-implementation, this value is the argument
-\texttt{max\_trips\_per\_vehicle}. If it is not provided, the code computes the
-lower bound
+Let \(R\) be the maximum number of mini-routes allowed for each vehicle. A
+natural lower bound is
 \[
     R =
     \left\lceil
@@ -87,9 +85,9 @@ where \(H_{sp}\) is the demand of station \(s\) for product \(p\), and \(Q_k\)
 is the capacity of vehicle \(k\).
 
 The model allows split deliveries. Therefore, the demand of a station for a
-product may be served by several vehicles or by several trips, subject to the
-additional rule that one vehicle cannot visit the same station twice for the
-same product.
+product may be shared by several vehicles. A given vehicle can visit a station
+at most once for that product over its complete schedule. The same vehicle may
+return to the station on another trip when it is carrying a different product.
 
 \section{Sets and Indices}
 
@@ -126,7 +124,7 @@ Symbol & Description \\
 \(B_{dp}\) & Stock of product \(p\) available at depot \(d\). \\
 \(g(k)\) & Home garage of vehicle \(k\). \\
 \(p^0_k\) & Initial product configuration of vehicle \(k\). \\
-\(C_{pp'}\) & Changeover cost from product \(p\) to product \(p'\). \\
+\(C_{pp'}\) & Preparation and loading-transition cost from configuration \(p\) to loaded product \(p'\). \\
 \(\Delta_{ij}\) & Distance between nodes \(i\) and \(j\). \\
 \(M=|S|\) & Big-\(M\) value used for station ordering. \\
 \bottomrule
@@ -178,10 +176,10 @@ The objective minimizes the total operating cost:
     && \text{empty transfer between depots} \nonumber\\
 & + \sum_{k \in K}\sum_{p \in P}
     C_{p^0_k p} y_{k1p}
-    && \text{initial product setup} \nonumber\\
+    && \text{initial loading setup} \nonumber\\
 & + \sum_{k \in K}\sum_{t=1}^{R-1}\sum_{p \in P}\sum_{p' \in P}
     C_{pp'} z_{ktpp'}
-    && \text{inter-trip changeover}.
+    && \text{preparation for a subsequent loading}.
 \label{eq:objective}
 \end{align}
 
@@ -262,7 +260,7 @@ The variable \(w_{ktsp}\) is the logical AND of the station visit variable
 \end{align}
 
 The same vehicle cannot visit the same station more than once for the same
-product:
+product. Visits by that vehicle for different products remain possible:
 \begin{equation}
     \sum_{t \in T} w_{ktsp} \leq 1
     \qquad \forall k \in K,\ s \in S,\ p \in P.
@@ -330,7 +328,7 @@ The total quantity loaded from each depot cannot exceed the available stock:
 
 \subsection{Subtour Elimination}
 
-The implementation uses Miller--Tucker--Zemlin station order variables:
+Miller--Tucker--Zemlin order variables describe the position of each station:
 \begin{align}
     u_{kts} &\leq M v_{kts}
         && \forall k \in K,\ t \in T,\ s \in S, \label{eq:order-upper}\\
@@ -400,12 +398,9 @@ The variable \(r_{ktd}\) is the logical AND of ending trip \((k,t)\) at depot
     0 \leq u_{kts} &\leq M.
 \end{align}
 
-\section{Implementation Notes}
+\section{Model Scope}
 
-The notation above follows the implemented model in
-\texttt{mpvrp\_cc/optimization/milp\_solver.py}. The
-Python code uses zero-based product indices internally, while product
-identifiers in instance files may be one-based. The allowed route arcs contain
+The allowed route arcs contain
 depot-to-station, station-to-station, and station-to-depot arcs, but not
 depot-to-depot arcs. Empty depot-to-depot movements are priced only between
 consecutive trips.

@@ -49,7 +49,7 @@
 
 .form-group input:focus {
     outline: none;
-    border-color: #3c27f5;
+    border-color: #F4320B;
     box-shadow: 0 0 0 3px rgba(60, 39, 245, 0.12);
 }
 
@@ -120,7 +120,7 @@
 .btn-upload {
     width: 100%;
     margin-top: 4px;
-    background: #3c27f5;
+    background: #F4320B;
     color: #fff;
     border: none;
     border-radius: 6px;
@@ -152,9 +152,9 @@
 .msg-banner--info-static {
     margin-top: 12px;
     margin-bottom: 14px;
-    background: #eff6ff;
-    border: 1px solid #3c27f5;
-    color: #3c27f5;
+    background: #fff0eb;
+    border: 1px solid #F4320B;
+    color: #cf2808;
 }
 
 .result-section {
@@ -195,7 +195,7 @@
 
 .result-details summary {
     cursor: pointer;
-    color: #3c27f5;
+    color: #F4320B;
     font-weight: 600;
     padding: 12px 0;
     user-select: none;

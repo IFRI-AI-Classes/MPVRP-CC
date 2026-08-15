@@ -12,7 +12,18 @@ EPSILON = 1e-2
 METRIC_TOLERANCE = 0.2
 
 
-def verify_solution(instance: Instance, solution: ParsedSolutionDat) -> tuple[list[str], dict[str, Any]]:
+def verify_solution(
+    instance: Instance,
+    solution: ParsedSolutionDat,
+    *,
+    check_reported_metrics: bool = False,
+) -> tuple[list[str], dict[str, Any]]:
+    """Check route feasibility and recompute all performance metrics.
+
+    Values reported in the solution file are informative by default: rounding
+    or stale summary values must not invalidate an otherwise feasible route.
+    They can still be audited explicitly with ``check_reported_metrics=True``.
+    """
     errors: list[str] = []
     vehicles = {int(key[1:]): value for key, value in instance.camions.items()}
     depots = {int(key[1:]): value for key, value in instance.depots.items()}
@@ -44,7 +55,9 @@ def verify_solution(instance: Instance, solution: ParsedSolutionDat) -> tuple[li
             )
             continue
         keys = [solution_node_key(node["kind"], node["id"]) for node in route.nodes]
-        expected_garage = vehicle.garage_id
+        expected_garage = str(vehicle.garage_id)
+        if not expected_garage.startswith("G"):
+            expected_garage = f"G{expected_garage}"
         if not keys:
             errors.append(f"Vehicle {vehicle_id}: empty route")
             continue
@@ -145,7 +158,7 @@ def verify_solution(instance: Instance, solution: ParsedSolutionDat) -> tuple[li
                 trip_has_station = True
 
             expected_cumulative = float(cumulative_costs[index])
-            if abs(expected_cumulative - cumulative) > METRIC_TOLERANCE:
+            if check_reported_metrics and abs(expected_cumulative - cumulative) > METRIC_TOLERANCE:
                 errors.append(
                     f"Vehicle {vehicle_id}: cumulative changeover cost at step {index + 1} "
                     f"is {expected_cumulative}, expected {cumulative:.2f}"
@@ -177,10 +190,11 @@ def verify_solution(instance: Instance, solution: ParsedSolutionDat) -> tuple[li
         "total_switch_cost": total_switch_cost,
         "distance_total": total_distance,
     }
-    _check_metric(errors, solution.metrics, computed, "used_vehicles", 0)
-    _check_metric(errors, solution.metrics, computed, "total_changes", 0)
-    _check_metric(errors, solution.metrics, computed, "total_switch_cost", METRIC_TOLERANCE)
-    _check_metric(errors, solution.metrics, computed, "distance_total", METRIC_TOLERANCE)
+    if check_reported_metrics:
+        _check_metric(errors, solution.metrics, computed, "used_vehicles", 0)
+        _check_metric(errors, solution.metrics, computed, "total_changes", 0)
+        _check_metric(errors, solution.metrics, computed, "total_switch_cost", METRIC_TOLERANCE)
+        _check_metric(errors, solution.metrics, computed, "distance_total", METRIC_TOLERANCE)
     return errors, computed
 
 

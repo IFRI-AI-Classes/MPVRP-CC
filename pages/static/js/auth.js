@@ -8,7 +8,7 @@ function showMessage(message, type = 'error') {
     const colors = {
         error: { bg: '#fdf2f2', border: '#e74c3c', text: '#c0392b' },
         success: { bg: '#f0fdf4', border: '#27ae60', text: '#1e8449' },
-        info: { bg: '#eff6ff', border: '#3C27F5', text: '#3C27F5' },
+        info: { bg: '#fff0eb', border: '#F4320B', text: '#cf2808' },
     };
     const c = colors[type] || colors.error;
 

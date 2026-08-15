@@ -33,7 +33,8 @@ class Solver:
 
         self.C = {c.id : c.capacity for c in instance.camions.values()}
         self.g_k = {c.id : c.garage_id for c in instance.camions.values()}
-        self.p_initial = {c.id : c.initial_product for c in instance.camions.values()}
+        # The optimization model uses products 1..P while domain objects use 0..P-1.
+        self.p_initial = {c.id: c.initial_product + 1 for c in instance.camions.values()}
 
         # IMPORTANT: dans `utils.parse_instance`, les clés produits des demandes/stocks sont 0..(P-1)
         # alors que le modèle utilise 1..P. On décale donc de +1 ici pour rester cohérent.
@@ -502,11 +503,11 @@ class Solver:
 
             # garage de départ
             line1_parts.append(f"{mapping.get(garage_str, 0)}")
-            # On aligne la ligne produit sur le produit de la 1ère mini-tournée (format README)
-            first_tour_product_export = (k_tours[0]["product"] - 1) if k_tours else self.p_initial[k]
-            line2_parts.append(f"{first_tour_product_export}({current_cumul_cost:.1f})")
+            # The departure garage records the vehicle's initial configuration.
+            initial_product_export = self.p_initial[k] - 1
+            line2_parts.append(f"{initial_product_export}({current_cumul_cost:.1f})")
 
-            last_product_export = first_tour_product_export
+            last_product_export = initial_product_export
             last_station = None
             last_t = None
 

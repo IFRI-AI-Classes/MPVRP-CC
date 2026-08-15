@@ -520,10 +520,45 @@ class TestVerifySolutionMetrics:
             }
         )
         
-        errors, computed = verify_solution(metrics_instance, solution)
+        errors, computed = verify_solution(
+            metrics_instance, solution, check_reported_metrics=True
+        )
         
         assert computed["used_vehicles"] == 1
         assert any("used_vehicles" in e for e in errors)
+
+    def test_reported_metrics_do_not_change_route_feasibility(self, metrics_instance):
+        """Route feasibility relies on recomputed values, not submitted summaries."""
+        vehicle = ParsedSolutionVehicle(
+            vehicle_id=1,
+            nodes=[
+                {"kind": "garage", "id": 1, "qty": 0},
+                {"kind": "depot", "id": 1, "qty": 1000},
+                {"kind": "station", "id": 1, "qty": 1000},
+                {"kind": "depot", "id": 1, "qty": 500},
+                {"kind": "station", "id": 1, "qty": 500},
+                {"kind": "garage", "id": 1, "qty": 0},
+            ],
+            products=[
+                (0, 999.0), (0, 999.0), (0, 999.0),
+                (1, 999.0), (1, 999.0), (1, 999.0),
+            ],
+        )
+        solution = ParsedSolutionDat(
+            vehicles=[vehicle],
+            metrics={
+                "used_vehicles": 99,
+                "total_changes": 99,
+                "total_switch_cost": 999.0,
+                "distance_total": 999.0,
+            },
+        )
+
+        errors, computed = verify_solution(metrics_instance, solution)
+
+        assert errors == []
+        assert computed["used_vehicles"] == 1
+        assert computed["total_changes"] == 1
 
     def test_computed_metrics_returned(self, metrics_instance):
         """Test that computed metrics are returned."""

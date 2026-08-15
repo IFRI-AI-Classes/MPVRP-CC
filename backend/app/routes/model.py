@@ -25,7 +25,7 @@ async def verify_solution_endpoint(
     - Weight maintenance (quantity loaded = quantity delivered)
     - Meeting the demand of all stations
     - Compliance with depot stock levels
-    - Metric validation
+    - Automatic recomputation of distance and transition metrics
 
     Returns:
 

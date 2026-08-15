@@ -7,7 +7,7 @@ This directory is the complete server-side boundary of MPVRP-CC.
 - `core/model/` owns canonical parsers and solution feasibility.
 - `core/scoring/` evaluates submitted archives against official instances.
 - `core/experiments/` creates and reprices paired cost scenarios.
-- `database/` is the Notion persistence adapter.
+- `database/` stores participant and scoreboard information.
 
-Domain code does not depend on the static frontend. The frontend communicates
-with it only through the routes declared in `app/main.py`.
+The server and the static website remain independent. They communicate through
+the public HTTP API.
