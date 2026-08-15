@@ -99,7 +99,7 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border: 0; bo
 @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
 
 @media (max-width: 768px) {
-    .sidebar { position: fixed; top: 4.5rem; left: 0; height: calc(100% - 4.5rem); width: 240px; box-shadow: 0 10px 40px rgba(15, 23, 42, .14); }
+    .sidebar { position: fixed; top: 0; left: 0; height: 100%; width: 240px; box-shadow: 0 10px 40px rgba(15, 23, 42, .14); }
     .sidebar-toggle { left: 0; }
     body:has(.sidebar:not(.collapsed)) .sidebar-toggle { left: 240px; }
     .notification-container { top: 8px; right: 8px; max-width: 200px; }
