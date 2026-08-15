@@ -117,6 +117,8 @@ Only the instances with changeover costs are included in the official ranking. T
 
 ## 9. Official score
 
-For each feasible official instance, the score is the sum of the total travel distance and the total transition cost. A missing, malformed, or infeasible solution receives a penalty of `100000`.
+For each feasible official instance, the score is the sum of the total travel distance and the total transition cost. Participants may submit any subset of the 150 solutions in a ZIP archive; submitting the complete set at once is not required.
+
+The platform identifies the solutions present in the archive and evaluates them independently. A solution that is absent, unresolved, unreadable, or infeasible receives the same penalty of `100000` for its instance.
 
 The final score is the sum obtained across all 150 instances. Lower scores are better.

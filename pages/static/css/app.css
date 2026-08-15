@@ -1,6 +1,11 @@
 :root { color-scheme: light; }
 html { scroll-behavior: smooth; }
 body { font-family: Inter, sans-serif; }
+.has-floating-nav { padding-top: 4.5rem; }
+.floating-site-header { pointer-events: none; }
+.floating-site-header nav { pointer-events: auto; }
+.floating-site-header .brand-icon { height: 2rem; width: 2rem; border-radius: 999px; }
+.floating-site-header .brand-icon svg { height: 1.05rem; width: 1.05rem; }
 h1, h2, h3, h4, .font-display { font-family: "Bricolage Grotesque", sans-serif; }
 .grid-noise {
   background-image: linear-gradient(rgba(15, 23, 42, .045) 1px, transparent 1px),

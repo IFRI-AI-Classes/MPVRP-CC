@@ -25,8 +25,9 @@ The interactive route visualizer remains a standalone canvas application in
   demands, but replaces every transition cost by zero.
 
 The official score is the sum of `distance_total + total_switch_cost` across the
-150 original-cost instances. A missing or infeasible solution receives a penalty
-of `100000`.
+150 original-cost instances. A ZIP submission may contain any subset of those
+solutions. Every recognized file is evaluated independently; missing, unresolved,
+unreadable and infeasible solutions all receive the same penalty of `100000`.
 
 A vehicle may visit a station at most once for a given product across its entire
 schedule. It may return to the same station on another trip only when serving a

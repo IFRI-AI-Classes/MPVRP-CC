@@ -229,6 +229,11 @@ class TestParseSolutionRouteToken:
         result = _parse_solution_route_token("1(99999)")
         assert result["qty"] == 99999
 
+    def test_parse_decimal_quantities(self):
+        """Split deliveries may use non-integer quantities."""
+        assert _parse_solution_route_token("1[12.5]")["qty"] == 12.5
+        assert _parse_solution_route_token("2(7.25)")["qty"] == 7.25
+
 
 class TestParseSolutionProductToken:
     """Test suite for _parse_solution_product_token function."""
@@ -245,6 +250,12 @@ class TestParseSolutionProductToken:
         product, cost = _parse_solution_product_token("0(0.0)")
         
         assert product == 0
+        assert cost == 0.0
+
+    def test_parse_product_without_reported_cost(self):
+        product, cost = _parse_solution_product_token("2")
+
+        assert product == 2
         assert cost == 0.0
 
     def test_parse_token_with_whitespace(self):
@@ -348,3 +359,17 @@ test
         
         assert len(solution.vehicles) == 2
         assert solution.metrics["used_vehicles"] == 2
+
+    def test_parse_solution_without_summary_or_reported_costs(self, temp_dir):
+        filepath = os.path.join(temp_dir, "minimal_solution.dat")
+        content = """1: 1 - 1 [12.5] - 1 (12.5) - 1
+1: 0 - 0 - 0 - 0
+"""
+        with open(filepath, "w") as file:
+            file.write(content)
+
+        solution = parse_solution(filepath)
+
+        assert len(solution.vehicles) == 1
+        assert solution.metrics == {}
+        assert solution.vehicles[0].nodes[1]["qty"] == 12.5

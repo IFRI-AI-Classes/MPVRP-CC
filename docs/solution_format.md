@@ -14,7 +14,9 @@ the preferred solution name is:
 Sol_MPVRP_001_s48_d1_p1.dat
 ```
 
-The shorter name `Sol_001.dat` is also accepted. A submission archive may organize files in folders, but it must include one solution for every instance from `001` to `150`.
+The shorter name `Sol_001.dat` is also accepted. A submission archive may organize files in folders and may contain any subset of the instances from `001` to `150`. The platform identifies every recognized solution and evaluates it independently.
+
+Submitting all 150 solutions at once is not required. For the final score, an absent solution, an unresolved solution, and an invalid solution are treated in the same way: the corresponding instance receives a penalty of `100000`.
 
 ## 2. Describing a vehicle schedule
 
@@ -42,6 +44,8 @@ ID: Product(CumulativeCost) - Product(CumulativeCost) - ...
 
 This second line gives the vehicle's product configuration and cumulative transition cost at every step of the route. Product identifiers start at `0` in solution files and range from `0` to `NbProducts - 1`.
 
+The cumulative cost annotation is optional. A simpler sequence such as `0 - 0 - 1 - 1` is accepted because the platform recalculates transition costs from the instance matrix.
+
 The first value is the vehicle's initial product configuration. At every depot, the next value is the product being loaded. This is also where any preparation and loading-related transition cost is added. The amount comes from the directed matrix using the previous configuration and the newly loaded product. It therefore applies before the first delivery trip as well as between later trips. In the current benchmark, loading the same product again adds no transition cost because the matrix diagonal is zero.
 
 The route line and the product line must have exactly the same number of elements: every visited location has one corresponding product and cumulative cost.
@@ -60,7 +64,7 @@ Here, vehicle 1 leaves garage 1, loads 1344 units of product 0 at depot 1, deliv
 
 ## 4. Summary metrics
 
-After the last vehicle block, the file ends with six lines:
+After the last vehicle block, the file may end with six summary lines:
 
 ```text
 2
@@ -80,6 +84,8 @@ They contain, in this order:
 5. **Processor** — the processor used to produce the solution.
 6. **Resolution time** — the computation time in seconds.
 
+This summary is optional. The processor and resolution time may also be omitted, leaving only the first four numeric lines. The platform always recalculates the number of vehicles, product transitions, transition cost, and distance from the routes. Differences caused by rounding or outdated summary values do not make an otherwise feasible route invalid.
+
 ## 5. Feasibility requirements
 
 A valid solution must respect all of the following conditions:
@@ -92,4 +98,4 @@ A valid solution must respect all of the following conditions:
 - depot stocks remain non-negative;
 - every station-product demand is met exactly;
 - one vehicle serves a given station-product pair at most once across all its trips; it may revisit the same station only to deliver another product;
-- cumulative transition costs and final metrics match the routes described in the file.
+- the route itself respects all structural and operational constraints; cumulative costs and final metrics are recalculated by the platform.

@@ -161,14 +161,14 @@ def _parse_solution_route_token(token: str) -> Dict[str, Any]:
         # Dépôt : format id[qty]
         left, right = token.split("[", 1)
         node_id = int(left.strip())
-        qty = int(right.split("]", 1)[0].strip())
+        qty = float(right.split("]", 1)[0].strip())
         return {"kind": "depot", "id": node_id, "qty": qty}
 
     if "(" in token and ")" in token:
         # Station : format id(qty)
         left, right = token.split("(", 1)
         node_id = int(left.strip())
-        qty = int(right.split(")", 1)[0].strip())
+        qty = float(right.split(")", 1)[0].strip())
         return {"kind": "station", "id": node_id, "qty": qty}
 
     # Garage : format id (pas de quantité)
@@ -187,6 +187,11 @@ def _parse_solution_product_token(token: str) -> Tuple[int, float]:
     token = token.strip()
     if not token:
         raise ValueError("Empty token")
+    if "(" not in token and ")" not in token:
+        try:
+            return int(token), 0.0
+        except ValueError as exc:
+            raise ValueError(f"Invalid product token: {token}") from exc
     if "(" not in token or ")" not in token:
         raise ValueError(f"Invalid product token: {token}")
     p_str, rest = token.split("(", 1)
@@ -284,16 +289,22 @@ def parse_solution(filepath: str) -> ParsedSolutionDat:
 
     # Les lignes non vides restantes contiennent les métriques (6 lignes)
     metrics_lines = [l.strip() for l in raw_lines[i:] if l.strip()]
-    if len(metrics_lines) != 6:
-        raise ValueError(f"Expected 6 metric lines, got {len(metrics_lines)}")
+    if len(metrics_lines) not in {0, 4, 5, 6}:
+        raise ValueError(
+            "The optional summary must be omitted or contain at least its four numeric metrics"
+        )
 
-    metrics = {
-        "used_vehicles": int(metrics_lines[0]),
-        "total_changes": int(metrics_lines[1]),
-        "total_switch_cost": float(metrics_lines[2]),
-        "distance_total": float(metrics_lines[3]),
-        "processor": metrics_lines[4],
-        "time": float(metrics_lines[5]),
-    }
+    metrics: dict[str, Any] = {}
+    if metrics_lines:
+        metrics.update({
+            "used_vehicles": int(metrics_lines[0]),
+            "total_changes": int(metrics_lines[1]),
+            "total_switch_cost": float(metrics_lines[2]),
+            "distance_total": float(metrics_lines[3]),
+        })
+        if len(metrics_lines) >= 5:
+            metrics["processor"] = metrics_lines[4]
+        if len(metrics_lines) == 6:
+            metrics["time"] = float(metrics_lines[5])
 
     return ParsedSolutionDat(vehicles=vehicles, metrics=metrics)
