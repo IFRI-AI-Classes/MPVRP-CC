@@ -48,7 +48,7 @@ The cumulative cost annotation is optional. A simpler sequence such as `0 - 0 - 
 
 The first value is the vehicle's initial product configuration. At every depot, the next value is the product being loaded. This is also where any preparation and loading-related transition cost is added. The amount comes from the directed matrix using the previous configuration and the newly loaded product. It therefore applies before the first delivery trip as well as between later trips. In the current benchmark, loading the same product again adds no transition cost because the matrix diagonal is zero.
 
-The route line and the product line must have exactly the same number of elements: every visited location has one corresponding product and cumulative cost.
+The route line and the product line normally have the same number of elements: every visited location has one corresponding product and cumulative cost. The compact convention used by the historical benchmark solutions may omit the final garage entry from the product line. In that case, the last product configuration and cumulative cost are implicitly carried through to the return garage.
 
 ## 3. Example
 

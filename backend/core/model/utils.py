@@ -280,6 +280,18 @@ def parse_solution(filepath: str) -> ParsedSolutionDat:
         prod_tokens = [t for t in prod_tokens if t]
         products = [_parse_solution_product_token(t) for t in prod_tokens]
 
+        # Historical benchmark solutions omit the product entry associated
+        # with the final return to the garage.  The vehicle keeps the product
+        # configuration and cumulative cost of the preceding step there, so
+        # expand that compact representation to the canonical node-aligned
+        # form used by the feasibility checker.
+        if (
+            len(products) == len(nodes) - 1
+            and products
+            and nodes[-1]["kind"] == "garage"
+        ):
+            products.append(products[-1])
+
         vehicles.append(ParsedSolutionVehicle(vehicle_id=vehicle_id, nodes=nodes, products=products))
 
         i += 2

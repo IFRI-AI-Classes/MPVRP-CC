@@ -373,3 +373,16 @@ test
         assert len(solution.vehicles) == 1
         assert solution.metrics == {}
         assert solution.vehicles[0].nodes[1]["qty"] == 12.5
+
+    def test_parse_solution_accepts_omitted_final_garage_product(self, temp_dir):
+        filepath = os.path.join(temp_dir, "compact_product_line.dat")
+        content = """1: 1 - 1 [1000] - 1 (1000) - 1
+1: 0(0.0) - 0(0.0) - 0(0.0)
+"""
+        with open(filepath, "w") as file:
+            file.write(content)
+
+        vehicle = parse_solution(filepath).vehicles[0]
+
+        assert len(vehicle.nodes) == len(vehicle.products) == 4
+        assert vehicle.products[-1] == vehicle.products[-2] == (0, 0.0)
