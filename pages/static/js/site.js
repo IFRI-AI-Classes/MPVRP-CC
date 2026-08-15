@@ -4,6 +4,7 @@ const siteBase = isNestedPage ? '../' : '';
 const activePage = {
   'documentation.html': 'documentation',
   'tools.html': 'tools',
+  'visualisation.html': 'visualisation',
   'scoreboard.html': 'scoreboard',
   'submission.html': 'submission',
 }[pageName] || 'home';
@@ -12,7 +13,7 @@ const navigationItems = [
   ['documentation', 'Documentation', `${siteBase}pages/documentation.html`],
   ['tools', 'Tools', `${siteBase}pages/tools.html`],
   ['visualisation', 'Visualizer', `${siteBase}pages/visualisation.html`],
-  ['scoreboard', 'Scores', `${siteBase}pages/scoreboard.html`],
+  ['scoreboard', 'Leaderboard', `${siteBase}pages/scoreboard.html`],
 ];
 
 const existingHeader = document.querySelector('body > header');
@@ -20,19 +21,20 @@ if (existingHeader) {
   const keepOutOfPrint = existingHeader.classList.contains('no-print');
   existingHeader.className = `floating-site-header fixed inset-x-0 top-3 z-50 px-3 ${keepOutOfPrint ? 'no-print' : ''}`;
   existingHeader.style.pointerEvents = 'none';
+  existingHeader.style.transition = 'transform .35s ease, opacity .35s ease';
   existingHeader.innerHTML = `
-    <nav class="relative mx-auto flex w-fit max-w-full items-center gap-1 rounded-full border border-slate-200/80 bg-white/90 p-1.5 shadow-xl shadow-slate-900/10 backdrop-blur-xl" aria-label="Main navigation">
-      <a data-site-brand href="${siteBase}index.html" class="mr-0.5 shrink-0" aria-label="MPVRP-CC home"></a>
-      <div class="hidden items-center gap-0.5 md:flex">
+    <nav class="relative mx-auto flex w-fit max-w-full items-center gap-1 rounded-full border border-stone-200/80 bg-[#fffaf5]/95 p-2 shadow-xl shadow-stone-900/10 backdrop-blur-xl" aria-label="Main navigation">
+      <a data-site-brand href="${siteBase}index.html" class="mr-2 flex shrink-0 items-center gap-2 pr-1" aria-label="MPVRP-CC home"></a>
+      <div class="hidden items-center gap-1 md:flex">
         ${navigationItems.map(([id, label, href]) => `
-          <a href="${href}" class="rounded-full px-3 py-2 text-xs font-semibold transition ${activePage === id ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'}">${label}</a>
+          <a href="${href}" class="rounded-full px-4 py-2.5 text-sm font-semibold transition ${activePage === id ? 'bg-[#fff0eb] text-[#d92b09]' : 'text-stone-600 hover:bg-stone-100 hover:text-stone-950'}">${label}</a>
         `).join('')}
-        <a href="${siteBase}pages/submission.html" class="ml-1 rounded-full px-4 py-2 text-xs font-semibold text-white transition ${activePage === 'submission' ? 'bg-blue-600' : 'bg-slate-950 hover:bg-blue-600'}">Submit</a>
+        <a href="${siteBase}pages/submission.html" class="ml-1 rounded-full px-5 py-2.5 text-sm font-semibold text-white transition ${activePage === 'submission' ? 'bg-[#F4320B]' : 'bg-stone-950 hover:bg-[#F4320B]'}">Submit</a>
       </div>
       <button data-menu-button class="flex h-8 w-8 items-center justify-center rounded-full text-sm text-slate-700 hover:bg-slate-100 md:hidden" aria-label="Open menu" aria-expanded="false">☰</button>
       <div data-mobile-menu class="absolute left-1/2 top-[calc(100%+.55rem)] hidden w-56 -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl md:hidden">
         ${navigationItems.map(([id, label, href]) => `
-          <a href="${href}" class="block rounded-xl px-3 py-2.5 text-sm font-medium ${activePage === id ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'}">${label}</a>
+          <a href="${href}" class="block rounded-xl px-3 py-2.5 text-sm font-medium ${activePage === id ? 'bg-[#fff0eb] text-[#d92b09]' : 'text-stone-700 hover:bg-stone-50'}">${label}</a>
         `).join('')}
         <a href="${siteBase}pages/submission.html" class="mt-1 block rounded-xl bg-slate-950 px-3 py-2.5 text-center text-sm font-semibold text-white">Submit solutions</a>
       </div>
@@ -41,6 +43,45 @@ if (existingHeader) {
   document.body.classList.add('has-floating-nav');
   document.body.style.paddingTop = '4.5rem';
 }
+
+const scrollTopButton = document.createElement('button');
+scrollTopButton.type = 'button';
+scrollTopButton.setAttribute('aria-label', 'Back to top');
+scrollTopButton.title = 'Back to top';
+scrollTopButton.className = 'fixed bottom-5 right-5 z-40 flex h-11 w-11 translate-y-4 items-center justify-center rounded-full bg-[#F4320B] text-lg font-bold text-white opacity-0 shadow-xl shadow-orange-950/20 transition duration-300 hover:-translate-y-0.5 hover:bg-[#cf2808] pointer-events-none';
+scrollTopButton.innerHTML = '↑';
+scrollTopButton.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+document.body.appendChild(scrollTopButton);
+
+let previousScrollY = window.scrollY;
+let scrollFramePending = false;
+
+function updateScrollControls() {
+  const currentScrollY = Math.max(window.scrollY, 0);
+  const scrollingDown = currentScrollY > previousScrollY && currentScrollY > 90;
+
+  if (existingHeader) {
+    existingHeader.style.transform = scrollingDown ? 'translateY(calc(-100% - 1rem))' : 'translateY(0)';
+    existingHeader.style.opacity = scrollingDown ? '0' : '1';
+  }
+
+  const showScrollTop = currentScrollY > 360;
+  scrollTopButton.classList.toggle('opacity-0', !showScrollTop);
+  scrollTopButton.classList.toggle('translate-y-4', !showScrollTop);
+  scrollTopButton.classList.toggle('pointer-events-none', !showScrollTop);
+  scrollTopButton.classList.toggle('opacity-100', showScrollTop);
+  scrollTopButton.classList.toggle('translate-y-0', showScrollTop);
+
+  previousScrollY = currentScrollY;
+  scrollFramePending = false;
+}
+
+window.addEventListener('scroll', () => {
+  if (!scrollFramePending) {
+    window.requestAnimationFrame(updateScrollControls);
+    scrollFramePending = true;
+  }
+}, { passive: true });
 
 document.querySelectorAll('[data-menu-button]').forEach((button) => {
   button.addEventListener('click', () => {
@@ -62,12 +103,12 @@ const truckIcon = `
   </span>`;
 
 document.querySelectorAll('[data-site-brand]').forEach((brand) => {
-  brand.innerHTML = truckIcon;
+  brand.innerHTML = `${truckIcon}<span class="whitespace-nowrap font-display text-sm font-bold tracking-tight text-stone-950">MPVRP-CC</span>`;
   if (brand.closest('.floating-site-header')) {
     const icon = brand.querySelector('.brand-icon');
     const svg = brand.querySelector('svg');
-    Object.assign(icon.style, { height: '2rem', width: '2rem', borderRadius: '999px' });
-    Object.assign(svg.style, { height: '1.05rem', width: '1.05rem' });
+    Object.assign(icon.style, { height: '2.4rem', width: '2.4rem', borderRadius: '999px' });
+    Object.assign(svg.style, { height: '1.2rem', width: '1.2rem' });
   }
 });
 

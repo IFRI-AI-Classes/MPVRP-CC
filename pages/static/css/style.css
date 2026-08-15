@@ -28,7 +28,7 @@ header {
 h1 {
     font-size: 32px;
     font-weight: 700;
-    color: #3C27F5;
+    color: #F4320B;
     margin-bottom: 5px;
 }
 
@@ -57,7 +57,7 @@ nav {
 }
 
 .nav-links a {
-    color: #3C27F5;
+    color: #F4320B;
     text-decoration: none;
     font-size: 16px;
 }
@@ -78,7 +78,7 @@ nav {
 .menu-toggle .bar {
     width: 25px;
     height: 3px;
-    background-color: #3C27F5;
+    background-color: #F4320B;
     transition: all 0.3s ease;
 }
 
@@ -90,7 +90,7 @@ section {
 h2 {
     font-size: 24px;
     font-weight: 700;
-    color: #3C27F5;
+    color: #F4320B;
     border-bottom: 1px solid #ddd;
     padding-bottom: 8px;
     margin-bottom: 15px;
@@ -103,7 +103,7 @@ p {
 
 /* Links */
 a {
-    color: #3C27F5;
+    color: #F4320B;
 }
 
 a:hover {
