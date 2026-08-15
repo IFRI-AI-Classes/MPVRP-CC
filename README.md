@@ -3,6 +3,11 @@
 Research and competition platform for the **Multi-Product Vehicle Routing
 Problem with Split Deliveries and Changeover Costs**.
 
+In this benchmark, a changeover cost represents the operational preparation
+associated with loading a product. It may apply before the first trip as well
+as between successive trips; it is not limited to the act of switching from
+one product to another.
+
 The repository deliberately separates two deployable surfaces:
 
 - the static GitHub Pages frontend at the repository root and in `pages/`;
@@ -36,7 +41,7 @@ backend/
   core/model/          instance/solution parsing and strict feasibility checks
   core/scoring/        secure ZIP ingestion and official evaluation
   core/experiments/    paired scenarios and ex-post changeover repricing
-  database/            Notion persistence adapter
+  database/            participant and scoreboard persistence
 data/instances/        paired benchmark datasets
 docs/                  Markdown sources used by the static documentation pages
 pages/                 GitHub Pages UI and JavaScript clients
@@ -61,13 +66,7 @@ Configure deployments with:
 FRONTEND_DEV_URL=http://127.0.0.1:5500
 FRONTEND_PROD_URL=https://your-org.github.io
 FRONTEND_PROD_URL_2=https://your-custom-domain.example
-NOTION_TOKEN=secret_...
-NOTION_DATABASE_ID=...
-NOTION_DATA_SOURCE_ID=...
 ```
-
-Notion remains the source of truth for participant score, feasible-solution
-count, submission date and rank.
 
 ## Static frontend
 
@@ -96,7 +95,7 @@ uv run pytest
 ```
 
 The suite validates the API, strict solution checks, generator, ZIP safety,
-Notion adapter and all 150 paired benchmark files.
+scoreboard persistence and all 150 paired benchmark files.
 
 ## Docker
 
