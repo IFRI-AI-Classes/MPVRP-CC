@@ -78,7 +78,7 @@ def test_upsert_submission_updates_existing_email(monkeypatch):
         data_source_id="source-1",
         email="team@example.com",
         score=100.0,
-        feasible_solutions=150,
+        feasible_solutions=100,
         name="Team",
     )
 
@@ -108,4 +108,3 @@ def test_extract_value_handles_date_and_created_time():
 
     assert notion._extract_value(date_prop) == "2026-03-30T09:29:24+00:00"
     assert notion._extract_value(created_prop) is not None
-

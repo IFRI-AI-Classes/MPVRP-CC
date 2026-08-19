@@ -46,8 +46,7 @@ class TestEuclideanDistance:
         """Test distance with negative coordinates."""
         p1 = (-5.0, -5.0)
         p2 = (5.0, 5.0)
-        expected = math.sqrt(200)  # sqrt((10)^2 + (10)^2)
-        assert abs(euclidean_distance(p1, p2) - expected) < 1e-10
+        assert euclidean_distance(p1, p2) == 14.0
 
     def test_floating_point_coordinates(self):
         """Test distance with floating point coordinates."""
@@ -252,11 +251,9 @@ class TestParseSolutionProductToken:
         assert product == 0
         assert cost == 0.0
 
-    def test_parse_product_without_reported_cost(self):
-        product, cost = _parse_solution_product_token("2")
-
-        assert product == 2
-        assert cost == 0.0
+    def test_product_without_reported_cost_is_rejected(self):
+        with pytest.raises(ValueError, match="Invalid product token"):
+            _parse_solution_product_token("2")
 
     def test_parse_token_with_whitespace(self):
         """Test parsing tokens with whitespace."""
@@ -340,10 +337,10 @@ class TestParseSolution:
         """Test parsing solution with multiple vehicles."""
         filepath = os.path.join(temp_dir, "multi_vehicle_solution.dat")
         content = """1: 1 - 1 [1000] - 1 (1000) - 1
-1: 0(0.0) - 0(0.0) - 0(0.0) - 0(0.0)
+1: 0(0.0) - 0(0.0) - 0(0.0)
 
 2: 1 - 1 [500] - 2 (500) - 1
-2: 0(0.0) - 0(0.0) - 0(0.0) - 0(0.0)
+2: 0(0.0) - 0(0.0) - 0(0.0)
 
 2
 0
@@ -360,7 +357,7 @@ test
         assert len(solution.vehicles) == 2
         assert solution.metrics["used_vehicles"] == 2
 
-    def test_parse_solution_without_summary_or_reported_costs(self, temp_dir):
+    def test_parse_solution_rejects_missing_summary_or_reported_costs(self, temp_dir):
         filepath = os.path.join(temp_dir, "minimal_solution.dat")
         content = """1: 1 - 1 [12.5] - 1 (12.5) - 1
 1: 0 - 0 - 0 - 0
@@ -368,16 +365,20 @@ test
         with open(filepath, "w") as file:
             file.write(content)
 
-        solution = parse_solution(filepath)
-
-        assert len(solution.vehicles) == 1
-        assert solution.metrics == {}
-        assert solution.vehicles[0].nodes[1]["qty"] == 12.5
+        with pytest.raises(ValueError, match="Invalid product token"):
+            parse_solution(filepath)
 
     def test_parse_solution_accepts_omitted_final_garage_product(self, temp_dir):
         filepath = os.path.join(temp_dir, "compact_product_line.dat")
         content = """1: 1 - 1 [1000] - 1 (1000) - 1
 1: 0(0.0) - 0(0.0) - 0(0.0)
+
+1
+0
+0.00
+0.00
+test
+0.100
 """
         with open(filepath, "w") as file:
             file.write(content)

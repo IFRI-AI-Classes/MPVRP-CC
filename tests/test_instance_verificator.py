@@ -11,7 +11,7 @@ from backend.paths import WITH_CHANGEOVER_INSTANCES_DIR, WITHOUT_CHANGEOVER_INST
 def test_all_benchmark_instances_are_canonical_and_paired():
     with_costs = sorted(WITH_CHANGEOVER_INSTANCES_DIR.glob("MPVRP_*.dat"))
     without_costs = sorted(WITHOUT_CHANGEOVER_INSTANCES_DIR.glob("MPVRP_*.dat"))
-    assert len(with_costs) == len(without_costs) == 150
+    assert len(with_costs) == len(without_costs) == 100
     assert [path.name for path in with_costs] == [path.name for path in without_costs]
 
     for original, zeroed in zip(with_costs, without_costs):

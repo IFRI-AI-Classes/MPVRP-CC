@@ -68,8 +68,9 @@ class Solver:
         self.q_load = pulp.LpVariable.dicts("q_load", ((d, k, p, t) for d in self.D for k in self.K for p in self.P for t in self.T), lowBound=0, cat=pulp.LpContinuous)
         # q[i, k, p, t]: Quantité de produit p restant dans le véhicule k au nœud i à la position t.
         self.q = pulp.LpVariable.dicts("q", ((i, k, p, t) for i in self.V for k in self.K for p in self.P for t in self.T), lowBound=0, cat=pulp.LpContinuous)
-        # switch[k, t, p1, p2]: 1 si le véhicule k effectue un changement de produit de p′ à p à la position t ∈ T (p′ != p).
-        self.switch = pulp.LpVariable.dicts("switch", ((k, t, p1, p2) for k in self.K for t in self.T for p1 in self.P for p2 in self.P if p1 != p2), cat=pulp.LpBinary)
+        # switch[k, t, p1, p2]: 1 when loading p2 after configuration p1.
+        # Diagonal pairs represent priced same-product preparation operations.
+        self.switch = pulp.LpVariable.dicts("switch", ((k, t, p1, p2) for k in self.K for t in self.T for p1 in self.P for p2 in self.P), cat=pulp.LpBinary)
         # start[g, d, k]: 1 si le véhicule k commence sa tournée au garage gk et se dirige vers le dépôt d ∈ D, 0 sinon.
         self.start = pulp.LpVariable.dicts("start", ((self.g_k[k], d, k) for d in self.D for k in self.K), cat=pulp.LpBinary)
         # fin[s, g_k, k, p, t]: 1 si le véhicule k termine sa tournée complète au garage gk depuis s à la fin de la mini-tournée t.
@@ -90,7 +91,7 @@ class Solver:
 
         switch_cost = pulp.lpSum(
             self.costs.get((p1, p2), 0.0) * self.switch[k, t, p1, p2]
-            for k in self.K for t in self.T for p1 in self.P for p2 in self.P if p1 != p2
+            for k in self.K for t in self.T for p1 in self.P for p2 in self.P
         )
 
         start_cost = pulp.lpSum(
@@ -363,17 +364,19 @@ class Solver:
             for t in self.T:
                 for p1 in self.P:
                     for p2 in self.P:
-                        if p1 == p2:
-                            continue
                         if t == 1:
                             prod_prev = 1 if p1 == self.p_initial[k] else 0
                             self.model += (
                                 self.switch[k, t, p1, p2] >= prod_prev + self.prod[k, t, p2] - 1
                             ), f"Product_Change_Detection_Vehicle_{k}_Tour_{t}_Products_{p1}_{p2}"
+                            self.model += self.switch[k, t, p1, p2] <= prod_prev
+                            self.model += self.switch[k, t, p1, p2] <= self.prod[k, t, p2]
                         else:
                             self.model += (
                                 self.switch[k, t, p1, p2] >= self.prod[k, t-1, p1] + self.prod[k, t, p2] - 1
                             ), f"Product_Change_Detection_Vehicle_{k}_Tour_{t}_Products_{p1}_{p2}"
+                            self.model += self.switch[k, t, p1, p2] <= self.prod[k, t-1, p1]
+                            self.model += self.switch[k, t, p1, p2] <= self.prod[k, t, p2]
 
     def solve(self):
         self.build_model()
@@ -520,11 +523,10 @@ class Solver:
                 cost_switch = 0.0
                 for p1 in self.P:
                     for p2 in self.P:
-                        if p1 == p2:
-                            continue
                         if _val(self.switch[k, t, p1, p2]) > 0.5:
                             cost_switch += self.costs.get((p1, p2), 0.0)
-                            total_changes += 1
+                            if p1 != p2:
+                                total_changes += 1
                 current_cumul_cost += cost_switch
                 total_switch_cost += cost_switch
 
@@ -551,15 +553,12 @@ class Solver:
                 # si la fin est bien activée sur la dernière station, on ferme la route
                 if any(_val(self.fin[last_station, garage_str, k, p, last_t]) > 0.5 for p in self.P):
                     line1_parts.append(f"{mapping.get(garage_str, 0)}")
-                    line2_parts.append(f"{last_product_export}({current_cumul_cost:.1f})")
                 else:
                     # fallback: on ferme quand même pour rester lisible/exportable
                     line1_parts.append(f"{mapping.get(garage_str, 0)}")
-                    line2_parts.append(f"{last_product_export}({current_cumul_cost:.1f})")
             else:
                 # aucun segment -> juste retour au garage
                 line1_parts.append(f"{mapping.get(garage_str, 0)}")
-                line2_parts.append(f"{last_product_export}({current_cumul_cost:.1f})")
 
             output_lines.append(f"{vehicle_id}: " + " - ".join(line1_parts))
             output_lines.append(f"{vehicle_id}: " + " - ".join(line2_parts))

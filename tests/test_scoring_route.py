@@ -48,4 +48,4 @@ async def test_scoring_formats_service_result(monkeypatch):
             files={"file": ("solutions.zip", io.BytesIO(b"placeholder"), "application/zip")},
         )
     assert response.status_code == 200
-    assert response.json()["total_valid_instances"] == "1/150"
+    assert response.json()["total_valid_instances"] == "1/100"

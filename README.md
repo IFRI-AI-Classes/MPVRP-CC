@@ -18,14 +18,14 @@ The interactive route visualizer remains a standalone canvas application in
 
 ## Benchmark scenarios
 
-`data/instances/` contains 150 one-to-one pairs:
+`data/instances/` contains 100 one-to-one pairs:
 
 - `with_changeover_costs/` is the official dataset used for scoring;
 - `without_changeover_costs/` keeps the same UUID, fleet, locations, stocks and
   demands, but replaces every transition cost by zero.
 
 The official score is the sum of `distance_total + total_switch_cost` across the
-150 original-cost instances. A ZIP submission may contain any subset of those
+100 original-cost instances. A ZIP submission may contain any subset of those
 solutions. Every recognized file is evaluated independently; missing, unresolved,
 unreadable and infeasible solutions all receive the same penalty of `100000`.
 
@@ -101,7 +101,7 @@ uv run pytest
 ```
 
 The suite validates the API, strict solution checks, generator, ZIP safety,
-scoreboard persistence and all 150 paired benchmark files.
+scoreboard persistence and all 100 paired benchmark files.
 
 ## Docker
 

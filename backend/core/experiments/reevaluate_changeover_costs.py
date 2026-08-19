@@ -31,6 +31,7 @@ def _reevaluate_product_line(
     line: str,
     instance: Instance,
     expected_initial_product: int,
+    loading_indices: set[int],
 ) -> tuple[str, int, float]:
     """Replace displayed cumulative costs while preserving the product sequence."""
     prefix, separator, sequence = line.partition(":")
@@ -54,9 +55,10 @@ def _reevaluate_product_line(
     number_of_changes = 0
     previous_product = products[0]
     replacement_costs = [0.0]
-    for product in products[1:]:
-        if product != previous_product:
+    for index, product in enumerate(products[1:], start=1):
+        if index in loading_indices:
             cumulative_cost += instance.costs[(previous_product, product)]
+        if index in loading_indices and product != previous_product:
             number_of_changes += 1
         replacement_costs.append(cumulative_cost)
         previous_product = product
@@ -94,10 +96,16 @@ def reevaluate_solution_text(solution_text: str, instance: Instance) -> tuple[st
         vehicle_id = int(prefix.strip())
         if vehicle_id not in vehicles:
             raise ValueError(f"Unknown vehicle {vehicle_id} in solution.")
+        if index == 0:
+            raise ValueError(f"Vehicle {vehicle_id} product line has no preceding route line.")
+        route_sequence = lines[index - 1].partition(":")[2]
+        route_tokens = [token.strip() for token in route_sequence.split("-") if token.strip()]
+        loading_indices = {position for position, token in enumerate(route_tokens) if "[" in token}
         updated_line, changes, cost = _reevaluate_product_line(
             line,
             instance,
             vehicles[vehicle_id].initial_product,
+            loading_indices,
         )
         lines[index] = updated_line
         total_changes += changes

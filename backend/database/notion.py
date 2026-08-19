@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from dotenv import load_dotenv
 from notion_client import Client
 
+from backend.paths import OFFICIAL_INSTANCE_COUNT
+
 load_dotenv()
 
 # Configurer les logs
@@ -238,7 +240,7 @@ def upsert_submission(
     # Déterminer le statut selon les solutions réalisables
     if feasible_solutions is None:
         status = "Null"
-    elif feasible_solutions < 150:
+    elif feasible_solutions < OFFICIAL_INSTANCE_COUNT:
         status = "Draft"
     else:
         status = "Complete"

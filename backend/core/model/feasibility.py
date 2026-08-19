@@ -128,7 +128,10 @@ def verify_solution(
                 previous_product = products[index - 1] if index else initial_product
                 if product != previous_product:
                     total_changes += 1
-                    cumulative += float(instance.costs[(previous_product, product)])
+                # Every depot loading is a priced preparation operation.  A
+                # same-product loading uses the matrix diagonal but is not
+                # counted as a genuine product change.
+                cumulative += float(instance.costs[(previous_product, product)])
                 loaded[(f"D{node_id}", product)] = loaded.get((f"D{node_id}", product), 0.0) + quantity
                 current_load = quantity
                 current_delivered = 0.0

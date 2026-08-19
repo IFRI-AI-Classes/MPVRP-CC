@@ -1,4 +1,4 @@
-"""Evaluate official submissions against the 150 changeover-cost instances."""
+"""Evaluate official submissions against the official changeover-cost instances."""
 
 from __future__ import annotations
 
@@ -9,11 +9,11 @@ from pathlib import Path
 
 from backend.core.model.feasibility import verify_solution
 from backend.core.model.utils import parse_instance, parse_solution
-from backend.paths import WITH_CHANGEOVER_INSTANCES_DIR
+from backend.paths import OFFICIAL_INSTANCE_COUNT, WITH_CHANGEOVER_INSTANCES_DIR
 
 
 BIG_M = 100_000.0
-EXPECTED_INSTANCE_COUNT = 150
+EXPECTED_INSTANCE_COUNT = OFFICIAL_INSTANCE_COUNT
 MAX_ARCHIVE_FILES = 1_000
 MAX_UNCOMPRESSED_BYTES = 100 * 1024 * 1024
 SOLUTION_ID_RE = re.compile(r"^Sol_(?:MPVRP_)?(?P<id>\d{3})(?:_.*)?\.dat$", re.IGNORECASE)

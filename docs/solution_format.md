@@ -5,18 +5,18 @@
 Solutions are plain-text files with the `.dat` extension. For the instance:
 
 ```text
-MPVRP_001_s48_d1_p1.dat
+MPVRP_001_s36_d8_p3.dat
 ```
 
 the preferred solution name is:
 
 ```text
-Sol_MPVRP_001_s48_d1_p1.dat
+Sol_001_s36_d8_p3.dat
 ```
 
-The shorter name `Sol_001.dat` is also accepted. A submission archive may organize files in folders and may contain any subset of the instances from `001` to `150`. The platform identifies every recognized solution and evaluates it independently.
+This is the canonical name generated and recognized by the repository tools. A submission archive may organize files in folders and may contain any subset of the instances from `001` to `100`. The platform identifies every recognized solution and evaluates it independently.
 
-Submitting all 150 solutions at once is not required. For the final score, an absent solution, an unresolved solution, and an invalid solution are treated in the same way: the corresponding instance receives a penalty of `100000`.
+Submitting all 100 solutions at once is not required. For the final score, an absent solution, an unresolved solution, and an invalid solution are treated in the same way: the corresponding instance receives a penalty of `100000`.
 
 ## 2. Describing a vehicle schedule
 
@@ -44,32 +44,32 @@ ID: Product(CumulativeCost) - Product(CumulativeCost) - ...
 
 This second line gives the vehicle's product configuration and cumulative transition cost at every step of the route. Product identifiers start at `0` in solution files and range from `0` to `NbProducts - 1`.
 
-The cumulative cost annotation is optional. A simpler sequence such as `0 - 0 - 1 - 1` is accepted because the platform recalculates transition costs from the instance matrix.
+The cumulative cost annotation is part of the canonical repository format. Every product must be followed by the cumulative transition cost at that point, as in `0(42.00)`. The re-evaluation command uses these annotated entries when it rewrites a zero-cost solution with the cost-bearing matrix.
 
-The first value is the vehicle's initial product configuration. At every depot, the next value is the product being loaded. This is also where any preparation and loading-related transition cost is added. The amount comes from the directed matrix using the previous configuration and the newly loaded product. It therefore applies before the first delivery trip as well as between later trips. In the current benchmark, loading the same product again adds no transition cost because the matrix diagonal is zero.
+The first value is the vehicle's initial product configuration. At every depot, the next value is the product being loaded. This is also where a preparation and loading-related transition cost is added. The amount comes from the directed matrix using the previous configuration and the newly loaded product. It therefore applies before the first delivery trip as well as between later trips. Loading the same product again incurs the positive low cost on the matrix diagonal.
 
-The route line and the product line normally have the same number of elements: every visited location has one corresponding product and cumulative cost. The compact convention used by the historical benchmark solutions may omit the final garage entry from the product line. In that case, the last product configuration and cumulative cost are implicitly carried through to the return garage.
+The route line contains the terminal return garage, while the product line omits that final garage entry. The last product configuration and cumulative cost are implicitly carried through to the return garage. Consequently, the product line has exactly one fewer element than the route line.
 
 ## 3. Example
 
 ```text
 1: 1 - 1 [1344] - 2 (1344) - 1
-1: 0(0.0) - 0(0.0) - 0(0.0) - 0(0.0)
+1: 0(0.00) - 0(42.00) - 0(42.00)
 
 2: 1 - 1 [8947] - 1 (4278) - 2 (2350) - 3 (2319) - 1
-2: 1(0.0) - 1(0.0) - 1(0.0) - 1(0.0) - 1(0.0)
+2: 1(0.00) - 1(87.00) - 1(87.00) - 1(87.00) - 1(87.00)
 ```
 
-Here, vehicle 1 leaves garage 1, loads 1344 units of product 0 at depot 1, delivers them to station 2, and returns home. Vehicle 2 loads 8947 units of product 1, serves stations 1, 2, and 3, then returns to garage 1. Neither vehicle changes configuration, so their cumulative transition costs remain zero.
+Here, vehicle 1 leaves garage 1, loads 1344 units of product 0 at depot 1, delivers them to station 2, and returns home. Vehicle 2 loads 8947 units of product 1, serves stations 1, 2, and 3, then returns to garage 1. Neither vehicle genuinely changes product, but their initial loading operations incur diagonal costs of `42` and `87`, for a total transition cost of `129`.
 
 ## 4. Summary metrics
 
-After the last vehicle block, the file may end with six summary lines:
+After the last vehicle block, the canonical file ends with six summary lines:
 
 ```text
 2
-7
-55.66
+0
+129.00
 1385.07
 Intel Core i7-10700K
 0.245
@@ -78,13 +78,13 @@ Intel Core i7-10700K
 They contain, in this order:
 
 1. **Vehicles used** — the number of vehicles that perform at least one delivery.
-2. **Product transitions** — the total number of charged product transitions.
+2. **Product transitions** — the number of genuine product changes, excluding same-product loading operations.
 3. **Total transition cost** — the sum of all preparation and loading-related transition costs.
-4. **Total distance** — the Euclidean distance traveled by the complete fleet.
+4. **Total distance** — the sum of the integer-rounded Euclidean distances traveled by the complete fleet.
 5. **Processor** — the processor used to produce the solution.
 6. **Resolution time** — the computation time in seconds.
 
-This summary is optional. The processor and resolution time may also be omitted, leaving only the first four numeric lines. The platform always recalculates the number of vehicles, product transitions, transition cost, and distance from the routes. Differences caused by rounding or outdated summary values do not make an otherwise feasible route invalid.
+All six lines are required by the repository's solution reader and re-evaluation tools. The transition count records only changes between different products, whereas the total transition cost includes every charged loading operation, including a same-product diagonal cost.
 
 ## 5. Feasibility requirements
 
