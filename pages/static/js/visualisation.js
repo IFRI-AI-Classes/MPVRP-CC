@@ -733,7 +733,8 @@ function normalizeProductIndex(rawProduct, base, numProducts) {
 function updateFileStatus(type, filename) {
     const statusEl = document.getElementById(type + 'Status');
     const zoneEl = document.getElementById(type + 'Zone');
-    statusEl.textContent = '✅';
+    statusEl.innerHTML = '<svg class="status-icon" aria-hidden="true"><use href="#icon-status-loaded"></use></svg>';
+    statusEl.setAttribute('aria-label', `${type === 'instance' ? 'Instance' : 'Solution'} loaded`);
     zoneEl.classList.add('loaded');
     zoneEl.querySelector('.upload-label').textContent = filename.length > 15
         ? filename.substring(0, 12) + '...'

@@ -33,6 +33,11 @@ body:has(.sidebar.collapsed) .sidebar-toggle .toggle-icon { transform: rotate(18
 
 .upload-compact.dragover { border-color: #F4320B; background: #fff0eb; }
 .upload-compact.loaded { border-color: #10b981; background: #f0fdf4; }
+.import-icon, .status-icon { width: 19px; height: 19px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.import-icon { color: #64748b; }
+.import-status { display: inline-flex; align-items: center; justify-content: center; color: #94a3b8; }
+.upload-compact.loaded .import-icon, .upload-compact.loaded .import-status { color: #059669; }
+.status-icon { width: 17px; height: 17px; }
 .file-error[hidden] { display: none; }
 
 .fleet-compact { display: flex; flex-direction: column; gap: 6px; }
