@@ -9,10 +9,21 @@
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif'],display:['Bricolage Grotesque','sans-serif']},colors:{ink:'#171411',signal:'#F4320B'}}}}</script>
-    <link rel="stylesheet" href="static/css/visualisation.css">
+    <link rel="stylesheet" href="static/css/visualisation.css?v=20260820-node-icons">
     <link rel="stylesheet" href="static/css/app.css?v=20260815-orange">
 </head>
 <body class="h-screen overflow-hidden bg-[#eee9e1] font-sans text-stone-900 antialiased">
+    <svg class="icon-sprite" aria-hidden="true">
+        <symbol id="icon-node-garage" viewBox="0 0 24 24">
+            <path d="M3 21V10l9-7 9 7v11M5 9h14M8 21v-7h8v7M10 17h4"/>
+        </symbol>
+        <symbol id="icon-node-depot" viewBox="0 0 24 24">
+            <path d="m7.5 4.27 9 5.15M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16ZM3.3 7 12 12l8.7-5M12 22V12"/>
+        </symbol>
+        <symbol id="icon-node-station" viewBox="0 0 24 24">
+            <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>
+        </symbol>
+    </svg>
     <div class="relative flex h-screen">
         <button class="sidebar-toggle fixed left-[280px] top-1/2 z-[100] flex h-12 w-6 -translate-y-1/2 items-center justify-center rounded-r-lg border border-l-0 border-slate-200 bg-white text-[10px] text-slate-500 shadow-md transition-all hover:text-blue-600" id="sidebarToggle" onclick="toggleSidebar()" title="Toggle panel" aria-label="Toggle import panel">
             <span class="toggle-icon transition-transform">◀</span>
@@ -57,9 +68,9 @@
             <section class="flex flex-col gap-2.5">
                 <h2 class="text-[10px] font-semibold uppercase tracking-[.14em] text-slate-400">Legend</h2>
                 <div class="flex flex-col gap-1.5 text-xs text-slate-500">
-                    <div class="flex items-center gap-2.5 rounded-md bg-slate-100 px-2.5 py-2"><span class="text-base">🏢</span> Garage</div>
-                    <div class="flex items-center gap-2.5 rounded-md bg-slate-100 px-2.5 py-2"><span class="text-base">🏪</span> Depot</div>
-                    <div class="flex items-center gap-2.5 rounded-md bg-slate-100 px-2.5 py-2"><span class="text-base">⛽</span> Station</div>
+                    <div class="flex items-center gap-2.5 rounded-md bg-slate-100 px-2.5 py-2"><svg class="node-icon node-icon--garage" aria-hidden="true"><use href="#icon-node-garage"/></svg> Garage</div>
+                    <div class="flex items-center gap-2.5 rounded-md bg-slate-100 px-2.5 py-2"><svg class="node-icon node-icon--depot" aria-hidden="true"><use href="#icon-node-depot"/></svg> Depot</div>
+                    <div class="flex items-center gap-2.5 rounded-md bg-slate-100 px-2.5 py-2"><svg class="node-icon node-icon--station" aria-hidden="true"><use href="#icon-node-station"/></svg> Station</div>
                 </div>
             </section>
 
@@ -107,6 +118,6 @@
             <div class="notification-container" id="notificationContainer"></div>
         </main>
     </div>
-    <script src="static/js/visualisation.js"></script>
+    <script src="static/js/visualisation.js?v=20260820-node-icons-colors"></script>
 </body>
 </html>
