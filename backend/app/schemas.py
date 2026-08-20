@@ -11,7 +11,7 @@ class InstanceGenerationRequest(BaseModel):
     nb_garages: int = Field(..., ge=1, description="Number of garages")
     nb_stations: int = Field(..., ge=1, description="Number of stations")
     nb_produits: int = Field(..., ge=1, description="Number of products")
-    max_coord: float = Field(default=100.0, description="Grid size")
+    max_coord: int = Field(default=100, ge=1, description="Integer grid size")
     changeover_cost_level: str = Field(default="normal", pattern="^(low|normal|high|mixed)$")
     capacity_level: str = Field(default="medium", pattern="^(low|medium|large|mixed)$")
     demand_level: str = Field(default="medium", pattern="^(low|medium|high|mixed)$")

@@ -35,5 +35,5 @@ def test_changeover_levels_are_supported(tmp_path):
     base = GenerationConfig("demo", 3, 2, 1, 5, 3, output_dir=tmp_path, seed=11)
     for level in ("low", "normal", "high", "mixed"):
         data = generate_instance_data(replace(base, changeover_cost_level=level))
-        assert np.allclose(np.diag(data.transition_costs), 0)
+        assert np.all((np.diag(data.transition_costs) >= 25) & (np.diag(data.transition_costs) <= 150))
         assert np.all(data.transition_costs >= 0)

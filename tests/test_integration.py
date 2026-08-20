@@ -3,6 +3,7 @@ from pathlib import Path
 import numpy as np
 
 from backend.core.experiments.create_changeover_scenarios import zero_changeover_costs
+from backend.core.experiments.reevaluate_changeover_costs import reevaluate_solution_text
 from backend.core.generation.config import GenerationConfig
 from backend.core.generation.instance_generator import generate
 from backend.core.model.utils import parse_instance
@@ -29,8 +30,28 @@ def test_create_zero_cost_twin_preserves_everything_else(tmp_path):
     assert all(set(line.split()) <= {"0"} for line in paired_lines[2 : 2 + products])
 
 
+def test_reevaluation_charges_each_loading_including_same_product(sample_instance):
+    sample_instance.costs[(0, 0)] = 42.0
+    solution = """1: 1 - 1 [1000] - 1 (1000) - 1 [500] - 2 (500) - 1
+1: 0(0.00) - 0(0.00) - 0(0.00) - 0(0.00) - 0(0.00)
+
+1
+0
+0.00
+0.00
+test
+0.100
+"""
+
+    updated, changes, cost = reevaluate_solution_text(solution, sample_instance)
+
+    assert changes == 0
+    assert cost == 84.0
+    assert "0(42.00) - 0(42.00) - 0(84.00) - 0(84.00)" in updated
+
+
 def test_official_instances_are_parseable():
     paths = sorted(WITH_CHANGEOVER_INSTANCES_DIR.glob("MPVRP_*.dat"))
-    assert len(paths) == 150
+    assert len(paths) == 100
     for path in paths:
         assert parse_instance(str(path)).num_stations > 0

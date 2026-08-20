@@ -7,8 +7,7 @@ import numpy as np
 from backend.core.generation.config import (
     EPSILON, GenerationConfig, InstanceData, ParsedInstance, VerificationReport
 )
-
-
+from backend.core.model.utils import parse_instance
 
 def validate_generation_config(config: GenerationConfig) -> VerificationReport:
     """Validate generator options before any random instance data is created.
@@ -31,8 +30,14 @@ def validate_generation_config(config: GenerationConfig) -> VerificationReport:
             report.error(f"{name} must be at least 1.")
 
     # Validate spatial parameters
-    if config.grid_size <= 0:
+    if not isinstance(config.grid_size, (int, np.integer)):
+        report.error("grid_size must be an integer.")
+    elif config.grid_size <= 0:
         report.error("grid_size must be positive.")
+    if not isinstance(config.min_point_distance, (int, np.integer)):
+        report.error("min_point_distance must be an integer.")
+    elif config.min_point_distance < 1:
+        report.error("min_point_distance must be at least 1.")
     if not 0 < config.demand_probability <= 1:
         report.error("demand_probability must be in (0, 1].")
 
@@ -51,7 +56,11 @@ def validate_generation_config(config: GenerationConfig) -> VerificationReport:
         report.error("coordinate_strategy must be one of: uniform, clustered, corridor.")
 
     # Warn if minimum point distance is too large relative to grid size
-    if config.min_point_distance > config.grid_size:
+    if (
+        isinstance(config.grid_size, (int, np.integer))
+        and isinstance(config.min_point_distance, (int, np.integer))
+        and config.min_point_distance > config.grid_size
+    ):
         report.warning("min_point_distance is larger than the grid; coordinate retries may be exhausted.")
 
     return report
@@ -211,7 +220,7 @@ def _check_matrix(data: InstanceData, report: VerificationReport) -> None:
     Checks that:
     - All costs are finite numbers (not NaN or infinity)
     - All costs are non-negative
-    - Diagonal (same product) costs are exactly zero
+    - Cost-bearing matrices have strictly positive same-product setup costs
     - Warns if matrix appears to violate triangle inequality
     """
     matrix = data.transition_costs
@@ -224,9 +233,10 @@ def _check_matrix(data: InstanceData, report: VerificationReport) -> None:
     if np.any(matrix < -EPSILON):
         report.error("Transition costs must be non-negative.")
 
-    # Check diagonal is zero (no cost to stay with same product)
-    if not np.allclose(np.diag(matrix), 0.0):
-        report.error("Transition cost diagonal must be zero.")
+    # A zero matrix is the explicit no-cost control scenario. In every
+    # cost-bearing instance, same-product preparation must remain priced.
+    if not np.allclose(matrix, 0.0) and np.any(np.diag(matrix) <= EPSILON):
+        report.error("A cost-bearing transition matrix must have a strictly positive diagonal.")
 
     # If matrix is symmetric, check for triangle inequality violations
     # This is informational only; violations are allowed by the LP but unusual
@@ -267,7 +277,7 @@ def _check_default_trip_bound_scenario(data: InstanceData, report: VerificationR
     """Simulate necessary feasibility conditions for lp.py's default trip bound.
 
     The LP model uses a uniform per-vehicle trip bound calculated as:
-    max(ceil(total_demand / fleet_capacity), num_products)
+    max(ceil(total_demand / fleet_capacity) + 1, num_products)
 
     This function checks:
     1. The bound is at least the number of demanded products (each product needs mini-routes)
@@ -280,7 +290,7 @@ def _check_default_trip_bound_scenario(data: InstanceData, report: VerificationR
     total_demand = float(product_demands.sum())
 
     # Calculate the trip bound that lp.py will use
-    min_trips = _minimum_uniform_trip_bound(total_demand, total_capacity)
+    min_trips = _minimum_uniform_trip_bound(total_demand, total_capacity, data.nb_products)
     report.info(f"Minimum uniform trip bound used by lp.py default: {min_trips}.")
 
     # Check 1: bound must accommodate all demanded products
@@ -312,7 +322,11 @@ def _check_default_trip_bound_scenario(data: InstanceData, report: VerificationR
     _simulate_product_capacity_scenarios(data, min_trips, report)
 
 
-def _minimum_uniform_trip_bound(total_demand: float, total_capacity: float) -> int:
+def _minimum_uniform_trip_bound(
+    total_demand: float,
+    total_capacity: float,
+    product_count: int,
+) -> int:
     """Return the same uniform per-vehicle trip bound used by the MILP solver.
 
     This is the key feasibility calculation: how many trips does each vehicle need
@@ -320,7 +334,7 @@ def _minimum_uniform_trip_bound(total_demand: float, total_capacity: float) -> i
     """
     if total_demand <= EPSILON:
         return 0
-    return ceil(total_demand / total_capacity)
+    return max(ceil(total_demand / total_capacity) + 1, product_count)
 
 
 def _minimum_product_slots(data: InstanceData, product_demands: np.ndarray) -> int:
@@ -477,18 +491,31 @@ def _check_lp_parser_compatibility(instance: ParsedInstance, report: Verificatio
     using the LP model's parser. Catches file format issues that aren't caught
     by the numpy-based validation.
     """
+    try:
+        # Try to load using the actual LP parser
+        lp_instance = parse_instance(str(instance.filepath))
+    except Exception as exc:
+        report.error(f"Canonical model parser cannot parse this file: {exc}")
+        return
+
+    # Check that every vehicle has a valid garage reference
+    if any(vehicle.garage_id not in lp_instance.garages for vehicle in lp_instance.camions.values()):
+        report.error("Canonical model parser found at least one vehicle with no linked garage.")
+        return
+
+    # Check that dimensions match between what we generated and what the parser read
     parsed_dimensions = (
-        instance.nb_products,
-        instance.nb_depots,
-        instance.nb_garages,
-        instance.nb_stations,
-        instance.nb_vehicles,
+        lp_instance.num_products,
+        lp_instance.num_depots,
+        lp_instance.num_garages,
+        lp_instance.num_stations,
+        lp_instance.num_camions,
     )
     expected_dimensions = tuple(int(value) for value in instance.params)
     if parsed_dimensions != expected_dimensions:
         report.error(
-            "MPVRPInstance.read() dimensions differ from file header: "
+            "Canonical model parser dimensions differ from file header: "
             f"{parsed_dimensions} != {expected_dimensions}."
         )
     else:
-        report.info("Canonical parser compatibility: ok.")
+        report.info("LP parser compatibility: ok.")

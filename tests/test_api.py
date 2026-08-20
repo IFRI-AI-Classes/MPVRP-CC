@@ -101,7 +101,7 @@ async def test_scoreboard_normalizes_notion_payload(api_client, monkeypatch):
         "Rank": {"type": "number", "number": 1},
         "Name": {"type": "title", "title": [{"plain_text": "Team"}]},
         "Score": {"type": "number", "number": 42},
-        "Feasible solutions": {"type": "number", "number": 150},
+        "Feasible solutions": {"type": "number", "number": 100},
         "Submission date": {"type": "date", "date": {"start": "2026-01-01"}},
     }}])
     response = await api_client.get("/scoreboard")

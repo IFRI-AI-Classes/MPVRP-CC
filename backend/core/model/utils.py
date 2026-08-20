@@ -5,9 +5,14 @@ from typing import Dict, List, Tuple, Any
 from .schemas import Camion, Depot, Garage, Station, Instance, ParsedSolutionDat, ParsedSolutionVehicle
 
 
+def _parse_instance_integer(token: str) -> int:
+    """Parse a canonical instance token without accepting decimal notation."""
+    return int(token)
+
+
 def euclidean_distance(point1: tuple, point2: tuple) -> float:
-    """Calculer la distance euclidienne entre deux points 2D."""
-    return math.sqrt((point1[0] - point2[0]) ** 2 + (point1[1] - point2[1]) ** 2)
+    """Return Euclidean distance rounded to the nearest integer."""
+    return float(round(math.hypot(point1[0] - point2[0], point1[1] - point2[1])))
 
 
 def parse_instance(filepath: str) -> Instance:
@@ -21,7 +26,9 @@ def parse_instance(filepath: str) -> Instance:
         # instance_id = lines[0]
 
         # 2ème ligne: Nombre de produits, depôts, garages, stations, camions
-        num_products, num_depots, num_garages, num_stations, num_camions = map(int, lines[1].split())
+        num_products, num_depots, num_garages, num_stations, num_camions = map(
+            _parse_instance_integer, lines[1].split()
+        )
 
         # num_products lignes suivantes : Matrice des coûts de transition de produits
         # Dimension : NbProduits × NbProduits
@@ -29,7 +36,7 @@ def parse_instance(filepath: str) -> Instance:
         costs = {}
         cost_start_line = 2
         for i in range(num_products):
-            cost_values = list(map(float, lines[cost_start_line + i].split()))
+            cost_values = list(map(_parse_instance_integer, lines[cost_start_line + i].split()))
             for j in range(num_products):
                 costs[(i, j)] = cost_values[j]
 
@@ -40,7 +47,7 @@ def parse_instance(filepath: str) -> Instance:
         for i in range(num_camions):
             camion_data = lines[current_line + i].split()
             camion_id = f"K{int(camion_data[0])}"
-            capacity = float(camion_data[1])
+            capacity = float(_parse_instance_integer(camion_data[1]))
             garage_id = f"G{int(camion_data[2])}"
             # Instance files are one-based; domain objects use zero-based products.
             initial_product = int(camion_data[3]) - 1
@@ -53,9 +60,9 @@ def parse_instance(filepath: str) -> Instance:
         for i in range(num_depots):
             depot_data = lines[current_line + i].split()
             depot_id = f"D{int(depot_data[0])}"
-            x = float(depot_data[1])
-            y = float(depot_data[2])
-            stocks = {pid: int(depot_data[3 + pid]) for pid in range(num_products)}
+            x = float(_parse_instance_integer(depot_data[1]))
+            y = float(_parse_instance_integer(depot_data[2]))
+            stocks = {pid: _parse_instance_integer(depot_data[3 + pid]) for pid in range(num_products)}
             depots[depot_id] = Depot(depot_id, (x, y), stocks)
 
         current_line += num_depots
@@ -65,8 +72,8 @@ def parse_instance(filepath: str) -> Instance:
         for i in range(num_garages):
             garage_data = lines[current_line + i].split()
             garage_id = f"G{int(garage_data[0])}"
-            x = float(garage_data[1])
-            y = float(garage_data[2])
+            x = float(_parse_instance_integer(garage_data[1]))
+            y = float(_parse_instance_integer(garage_data[2]))
             garages[garage_id] = Garage(garage_id, (x, y))
 
         current_line += num_garages
@@ -76,9 +83,9 @@ def parse_instance(filepath: str) -> Instance:
         for i in range(num_stations):
             station_data = lines[current_line + i].split()
             station_id = f"S{int(station_data[0])}"
-            x = float(station_data[1])
-            y = float(station_data[2])
-            demand = {pid: int(station_data[3 + pid]) for pid in range(num_products)}
+            x = float(_parse_instance_integer(station_data[1]))
+            y = float(_parse_instance_integer(station_data[2]))
+            demand = {pid: _parse_instance_integer(station_data[3 + pid]) for pid in range(num_products)}
             stations[station_id] = Station(station_id, (x, y), demand)
 
         instance = Instance(
@@ -187,11 +194,6 @@ def _parse_solution_product_token(token: str) -> Tuple[int, float]:
     token = token.strip()
     if not token:
         raise ValueError("Empty token")
-    if "(" not in token and ")" not in token:
-        try:
-            return int(token), 0.0
-        except ValueError as exc:
-            raise ValueError(f"Invalid product token: {token}") from exc
     if "(" not in token or ")" not in token:
         raise ValueError(f"Invalid product token: {token}")
     p_str, rest = token.split("(", 1)
@@ -280,17 +282,13 @@ def parse_solution(filepath: str) -> ParsedSolutionDat:
         prod_tokens = [t for t in prod_tokens if t]
         products = [_parse_solution_product_token(t) for t in prod_tokens]
 
-        # Historical benchmark solutions omit the product entry associated
-        # with the final return to the garage.  The vehicle keeps the product
-        # configuration and cumulative cost of the preceding step there, so
-        # expand that compact representation to the canonical node-aligned
-        # form used by the feasibility checker.
-        if (
-            len(products) == len(nodes) - 1
-            and products
-            and nodes[-1]["kind"] == "garage"
-        ):
-            products.append(products[-1])
+        if not products or len(products) != len(nodes) - 1 or nodes[-1]["kind"] != "garage":
+            raise ValueError(
+                "The product line must contain exactly one entry fewer than the route line; "
+                "the final return-garage product is implicit"
+            )
+        # Internally align products with nodes for feasibility evaluation.
+        products.append(products[-1])
 
         vehicles.append(ParsedSolutionVehicle(vehicle_id=vehicle_id, nodes=nodes, products=products))
 
@@ -301,22 +299,16 @@ def parse_solution(filepath: str) -> ParsedSolutionDat:
 
     # Les lignes non vides restantes contiennent les métriques (6 lignes)
     metrics_lines = [l.strip() for l in raw_lines[i:] if l.strip()]
-    if len(metrics_lines) not in {0, 4, 5, 6}:
-        raise ValueError(
-            "The optional summary must be omitted or contain at least its four numeric metrics"
-        )
+    if len(metrics_lines) != 6:
+        raise ValueError("The solution must end with exactly six summary lines")
 
-    metrics: dict[str, Any] = {}
-    if metrics_lines:
-        metrics.update({
-            "used_vehicles": int(metrics_lines[0]),
-            "total_changes": int(metrics_lines[1]),
-            "total_switch_cost": float(metrics_lines[2]),
-            "distance_total": float(metrics_lines[3]),
-        })
-        if len(metrics_lines) >= 5:
-            metrics["processor"] = metrics_lines[4]
-        if len(metrics_lines) == 6:
-            metrics["time"] = float(metrics_lines[5])
+    metrics: dict[str, Any] = {
+        "used_vehicles": int(metrics_lines[0]),
+        "total_changes": int(metrics_lines[1]),
+        "total_switch_cost": float(metrics_lines[2]),
+        "distance_total": float(metrics_lines[3]),
+        "processor": metrics_lines[4],
+        "time": float(metrics_lines[5]),
+    }
 
     return ParsedSolutionDat(vehicles=vehicles, metrics=metrics)

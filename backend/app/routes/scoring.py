@@ -10,6 +10,7 @@ from fastapi import APIRouter, UploadFile, File, BackgroundTasks, HTTPException,
 from backend.core.scoring.score_evaluation import process_full_submission
 from backend.database.notion import upsert_submission
 from backend.app.schemas import SubmissionResultResponse
+from backend.paths import OFFICIAL_INSTANCE_COUNT
 
 router = APIRouter(prefix="/scoring", tags=["Scoring"], include_in_schema=False)
 
@@ -61,7 +62,7 @@ async def submit_solutions_endpoint(
         "submitted_at": submitted_at,
         "total_score": round(result["total_weighted_score"], 2),
         "is_fully_feasible": result["is_fully_feasible"],
-        "total_valid_instances": f"{result['total_feasible_count']}/150",
+        "total_valid_instances": f"{result['total_feasible_count']}/{OFFICIAL_INSTANCE_COUNT}",
         "total_valid_instances_per_category": json.dumps(result["category_stats"]),
         "is_ready": True,
         "processor_info": result["processor_info"],

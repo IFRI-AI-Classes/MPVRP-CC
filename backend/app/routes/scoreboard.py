@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 
 from backend.database.notion import get_all_entries, _extract_value
 from backend.app.schemas import LeaderboardEntry
+from backend.paths import OFFICIAL_INSTANCE_COUNT
 
 
 router = APIRouter(prefix="/scoreboard", tags=["scoreboard"], include_in_schema=False)
@@ -34,7 +35,7 @@ async def get_global_leaderboard():
             rank=int(rank),
             team=team,
             score=round(_extract_value(props.get("Score", {})) or 0, 2),
-            instances_validated=f"{int(feasible)}/150",
+            instances_validated=f"{int(feasible)}/{OFFICIAL_INSTANCE_COUNT}",
             last_submission=submitted_at,
         ))
 

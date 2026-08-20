@@ -47,6 +47,26 @@ def test_initial_changeover_is_counted(sample_instance):
     assert computed["total_switch_cost"] == 10
 
 
+def test_same_product_loading_charges_diagonal_without_counting_a_change(sample_instance):
+    sample_instance.costs[(0, 0)] = 42.0
+    vehicle = ParsedSolutionVehicle(
+        vehicle_id=1,
+        nodes=[
+            {"kind": "garage", "id": 1, "qty": 0},
+            {"kind": "depot", "id": 1, "qty": 500},
+            {"kind": "station", "id": 1, "qty": 500},
+            {"kind": "garage", "id": 1, "qty": 0},
+        ],
+        products=[(0, 0.0), (0, 42.0), (0, 42.0), (0, 42.0)],
+    )
+    solution = ParsedSolutionDat(vehicles=[vehicle], metrics={})
+
+    _, computed = verify_solution(sample_instance, solution)
+
+    assert computed["total_changes"] == 0
+    assert computed["total_switch_cost"] == 42.0
+
+
 class TestVerifySolutionBasic:
     """Basic test suite for verify_solution function."""
 

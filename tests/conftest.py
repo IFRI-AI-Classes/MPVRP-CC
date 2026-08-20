@@ -126,13 +126,13 @@ def sample_instance_file(temp_dir):
     filepath = os.path.join(temp_dir, "test_instance.dat")
     content = """# test-uuid-1234-5678-9abc-def012345678
 2	1	1	2	1
-0.0	15.0
-15.0	0.0
+0	15
+15	0
 1	5000	1	1
-1	50.0	50.0	3000	2000
-1	0.0	0.0
-1	25.0	25.0	1000	500
-2	75.0	75.0	500	1000
+1	50	50	3000	2000
+1	0	0
+1	25	25	1000	500
+2	75	75	500	1000
 """
     with open(filepath, 'w') as f:
         f.write(content)
@@ -144,7 +144,7 @@ def sample_solution_file(temp_dir):
     """Create a temporary solution file for testing."""
     filepath = os.path.join(temp_dir, "test_solution.dat")
     content = """1: 1 - 1 [1500] - 1 (1000) - 2 (500) - 1
-1: 0(0.0) - 0(0.0) - 0(0.0) - 0(0.0) - 0(0.0)
+1: 0(0.0) - 0(0.0) - 0(0.0) - 0(0.0)
 
 1
 0

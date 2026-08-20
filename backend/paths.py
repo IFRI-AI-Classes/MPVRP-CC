@@ -4,6 +4,7 @@ from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+OFFICIAL_INSTANCE_COUNT = 100
 DATA_DIR = PROJECT_ROOT / "data"
 INSTANCES_DIR = DATA_DIR / "instances"
 WITH_CHANGEOVER_INSTANCES_DIR = INSTANCES_DIR / "with_changeover_costs"
