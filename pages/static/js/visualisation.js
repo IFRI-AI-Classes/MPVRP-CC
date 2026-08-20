@@ -47,11 +47,53 @@ let hoveredNode = null;
 let focusedTruckId = null;
 
 const TRUCK_COLORS = [
-    '#F4320B', '#dc2626', '#16a34a', '#9333ea', '#ea580c', '#0891b2',
-    '#db2777', '#4f46e5', '#65a30d', '#c026d3', '#0f766e', '#b45309',
-    '#03050a', '#ee99ae', '#15803d', '#7e22ce', '#c2410c', '#0e7490',
-    '#a21caf', '#cac538', '#4d7c0f', '#9d174d', '#0369a1', '#a16207'
+    '#2563EB', '#059669', '#7C3AED', '#DB2777', '#0891B2', '#CA8A04',
+    '#E11D48', '#4F46E5', '#4D7C0F', '#0F766E', '#0369A1', '#9333EA',
+    '#BE123C', '#047857', '#1D4ED8', '#A21CAF', '#0E7490', '#854D0E',
+    '#4338CA', '#15803D', '#6D28D9', '#9D174D', '#075985', '#3F6212'
 ];
+
+const NODE_ICON_PATHS = {
+    garage: [
+        'M3 21V10L12 3L21 10V21',
+        'M5 9H19',
+        'M8 21V14H16V21',
+        'M10 17H14'
+    ],
+    depot: [
+        'M7.5 4.27L16.5 9.42',
+        'M21 8A2 2 0 0 0 20 6.27L13 2.27A2 2 0 0 0 11 2.27L4 6.27A2 2 0 0 0 3 8V16A2 2 0 0 0 4 17.73L11 21.73A2 2 0 0 0 13 21.73L20 17.73A2 2 0 0 0 21 16Z',
+        'M3.3 7L12 12L20.7 7',
+        'M12 22V12'
+    ],
+    station: [
+        'M20 10C20 15 12 22 12 22S4 15 4 10A8 8 0 1 1 20 10Z',
+        'M14.5 10A2.5 2.5 0 1 1 9.5 10A2.5 2.5 0 1 1 14.5 10Z'
+    ]
+};
+
+const NODE_ICON_COLORS = {
+    garage: '#4F46E5',
+    depot: '#0891B2',
+    station: '#DB2777'
+};
+
+function truckColorAt(index) {
+    return TRUCK_COLORS[index % TRUCK_COLORS.length];
+}
+
+function colorWithAlpha(hex, alpha) {
+    const normalized = hex.replace('#', '');
+    const value = Number.parseInt(normalized, 16);
+    const red = (value >> 16) & 255;
+    const green = (value >> 8) & 255;
+    const blue = value & 255;
+    return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
+function nodeIconMarkup(type) {
+    return `<svg class="node-icon node-icon--${type}" aria-hidden="true"><use href="#icon-node-${type}"></use></svg>`;
+}
 
 const EXAMPLE_FILES = {
     instance: '../data/examples/MPVRP_052_s9_d1_p2.dat',
@@ -81,11 +123,12 @@ function showSwapNotification(truckId, fromProduct, toProduct, truckColor) {
 
     const notification = document.createElement('div');
     notification.className = 'notification';
+    notification.style.setProperty('--truck-color', truckColor);
     notification.innerHTML = `
-        <div class="notification-icon">🔄</div>
+        <div class="notification-icon" aria-hidden="true">↻</div>
         <div class="notification-content">
             <div class="notification-title">
-                <span class="notification-truck" style="background: ${truckColor}"></span>
+                <span class="notification-truck"></span>
                 ${truckId} Truck
             </div>
             <div class="notification-message">P${fromProduct} → P${toProduct}</div>
@@ -690,7 +733,8 @@ function normalizeProductIndex(rawProduct, base, numProducts) {
 function updateFileStatus(type, filename) {
     const statusEl = document.getElementById(type + 'Status');
     const zoneEl = document.getElementById(type + 'Zone');
-    statusEl.textContent = '✅';
+    statusEl.innerHTML = '<svg class="status-icon" aria-hidden="true"><use href="#icon-status-loaded"></use></svg>';
+    statusEl.setAttribute('aria-label', `${type === 'instance' ? 'Instance' : 'Solution'} loaded`);
     zoneEl.classList.add('loaded');
     zoneEl.querySelector('.upload-label').textContent = filename.length > 15
         ? filename.substring(0, 12) + '...'
@@ -777,7 +821,7 @@ function initData() {
 
         trucks.push({
             id,
-            color: TRUCK_COLORS[idx % TRUCK_COLORS.length],
+            color: truckColorAt(idx),
             segments: convertedSegments,
             totalDist: 0,
             visible: true
@@ -838,13 +882,19 @@ function renderFleetLegend() {
     trucks.forEach(truck => {
         const item = document.createElement('div');
         item.className = `fleet-item${truck.visible ? '' : ' is-hidden'}${focusedTruckId === truck.id ? ' is-focused' : ''}`;
+        item.style.setProperty('--truck-color', truck.color);
 
         const visibilityButton = document.createElement('button');
         visibilityButton.type = 'button';
         visibilityButton.className = 'fleet-visibility';
         visibilityButton.title = truck.visible ? `Hide ${truck.id}` : `Show ${truck.id}`;
         visibilityButton.setAttribute('aria-pressed', String(truck.visible));
-        visibilityButton.innerHTML = `<span class="fleet-color" style="background:${truck.color}"></span><span>${truck.visible ? '●' : '○'}</span>`;
+        const colorSwatch = document.createElement('span');
+        colorSwatch.className = 'fleet-color';
+        colorSwatch.setAttribute('aria-hidden', 'true');
+        const visibilityState = document.createElement('span');
+        visibilityState.textContent = truck.visible ? '●' : '○';
+        visibilityButton.append(colorSwatch, visibilityState);
         visibilityButton.addEventListener('click', () => toggleTruckVisibility(truck.id));
 
         const label = document.createElement('span');
@@ -1113,6 +1163,18 @@ function getStationSatisfaction(stationId) {
     return Math.min(1, totalDelivered / demand);
 }
 
+function drawNodeIcon(type, x, y) {
+    const paths = NODE_ICON_PATHS[type] || NODE_ICON_PATHS.station;
+    ctx.save();
+    ctx.translate(x - 12, y - 12);
+    ctx.strokeStyle = NODE_ICON_COLORS[type] || NODE_ICON_COLORS.station;
+    ctx.lineWidth = 1.8;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    paths.forEach(pathData => ctx.stroke(new Path2D(pathData)));
+    ctx.restore();
+}
+
 function drawNode(id, type) {
     const { x, y } = getCoords(id);
 
@@ -1141,15 +1203,12 @@ function drawNode(id, type) {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Icon
-    ctx.font = '22px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    let icon = type === 'garage' ? '🏢' : type === 'depot' ? '🏪' : '⛽';
-    ctx.fillText(icon, x, y + 1);
+    // Vector icon
+    drawNodeIcon(type, x, y);
 
     // Label
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     ctx.font = '600 11px Inter';
     ctx.fillStyle = getThemeColor('--text');
     ctx.fillText(id, x, y + 38);
@@ -1228,7 +1287,7 @@ function drawTruck(truck, currentProgress) {
 
     // Draw remaining route (dashed)
     ctx.setLineDash([8, 8]);
-    ctx.strokeStyle = truck.color + '40';
+    ctx.strokeStyle = colorWithAlpha(truck.color, 0.25);
     ctx.beginPath();
     ctx.moveTo(curX, curY);
     ctx.lineTo(end.x, end.y);
@@ -1251,7 +1310,7 @@ function drawTruck(truck, currentProgress) {
 
     // Glow
     const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, 25);
-    glow.addColorStop(0, truck.color + '60');
+    glow.addColorStop(0, colorWithAlpha(truck.color, 0.38));
     glow.addColorStop(1, 'transparent');
     ctx.fillStyle = glow;
     ctx.beginPath();
@@ -1293,7 +1352,7 @@ function draw() {
     trucks.filter(truck => truck.visible).forEach(truck => {
         if (truck.segments.length === 0) return;
 
-        ctx.strokeStyle = truck.color + (focusedTruckId === truck.id ? 'a8' : '70');
+        ctx.strokeStyle = colorWithAlpha(truck.color, focusedTruckId === truck.id ? 0.78 : 0.5);
         ctx.lineWidth = focusedTruckId === truck.id ? 4 : 2.5;
         ctx.setLineDash([5, 5]);
         ctx.beginPath();
@@ -1783,7 +1842,7 @@ function updateDepotInventoryPanel() {
 
         html += `<div class="depot-card ${hasNegative ? 'depot-warning' : ''}">
             <div class="depot-header">
-                <span class="depot-name">🏪 ${depotId}</span>
+                <span class="depot-name">${nodeIconMarkup('depot')} ${depotId}</span>
                 <span class="depot-visits">${visits} visit${visits !== 1 ? 's' : ''}</span>
             </div>
             <div class="depot-products">`;
@@ -1857,7 +1916,7 @@ function showTooltip(nodeId, clientX, clientY) {
         const demands = stationDemandsPerProduct[nodeId] || [];
         const deliveries = stationDeliveriesPerProduct[nodeId] || [];
 
-        content = `<div class="tooltip-header">⛽ ${nodeId}</div>`;
+        content = `<div class="tooltip-header">${nodeIconMarkup('station')} ${nodeId}</div>`;
         content += '<div class="tooltip-content">';
 
         if (demands.length > 0) {
@@ -1910,7 +1969,7 @@ function showTooltip(nodeId, clientX, clientY) {
     } else if (nodeId.startsWith('D')) {
         // Depot tooltip
         const supplies = instance.depotSupplies?.[nodeId] || [];
-        content = `<div class="tooltip-header">🏪 ${nodeId}</div>`;
+        content = `<div class="tooltip-header">${nodeIconMarkup('depot')} ${nodeId}</div>`;
         content += '<div class="tooltip-content">';
 
         if (supplies.length > 0) {
@@ -1925,7 +1984,7 @@ function showTooltip(nodeId, clientX, clientY) {
         content += '</div>';
     } else if (nodeId.startsWith('G')) {
         // Garage tooltip
-        content = `<div class="tooltip-header">🏢 ${nodeId}</div>`;
+        content = `<div class="tooltip-header">${nodeIconMarkup('garage')} ${nodeId}</div>`;
         content += '<div class="tooltip-content"><div class="tooltip-empty">Vehicle depot</div></div>';
     }
 
