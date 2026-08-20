@@ -46,7 +46,9 @@ Depending on the application, this cost may include:
 
 The cost is described by a directed matrix. Its value depends on the vehicle's current product configuration and on the product that will be loaded. A transition from product `p` to product `q` may therefore cost more or less than the reverse transition.
 
-The initial configuration of each vehicle is part of the instance. The first loading is evaluated from that initial configuration, so an initial preparation cost may be incurred before any delivery takes place. Later costs are evaluated at each new loading. In the current benchmark, the diagonal of the matrix is zero: loading the same product again does not add a new transition cost, even though a loading operation still takes place.
+The initial configuration of each vehicle is part of the instance. The first loading is evaluated from that initial configuration, so an initial preparation cost is incurred before any delivery takes place. Later costs are evaluated at each new loading. The diagonal is deliberately positive: loading the same product again still incurs a low preparation cost that reflects the loading operation.
+
+The cost-bearing benchmark uses three off-diagonal regimes: `normal` values range from `1001` to `3500`, `high` values range from `4501` to `15000`, and a `mixed` matrix samples both ranges arc by arc. Every diagonal value is sampled from the `low` range, from `25` to `150`. All bounds are inclusive and the matrix entries are integers.
 
 ## 5. Split deliveries
 
@@ -102,13 +104,13 @@ A solution is feasible when:
 - each used vehicle starts and ends at its home garage;
 - consecutive trips form a complete, connected schedule.
 
-The benchmark does not include time windows, explicit service times, or depot replenishment. Distances are Euclidean, and all locations are considered accessible.
+The benchmark does not include time windows, explicit service times, or depot replenishment. Distances are Euclidean and rounded to the nearest integer, and all locations are considered accessible.
 
 ## 8. Benchmark scenarios
 
-The benchmark contains two versions of each instance:
+The benchmark contains 100 pairs of instances. Every instance has between two and six products, and the cost-bearing set comprises 34 `normal`, 33 `high`, and 33 `mixed` matrices. Each pair has two versions:
 
-- **with changeover costs**, using the original transition matrix;
+- **with changeover costs**, using the generated cost-bearing transition matrix;
 - **without changeover costs**, using the same data with every transition cost set to zero.
 
 The paired instances have the same fleet, locations, stocks, demands, capacities, vehicle configurations, and identifier. Comparing their solutions shows how loading and transition costs influence vehicle use, product sequences, depot choices, routes, and total distance.
@@ -117,8 +119,8 @@ Only the instances with changeover costs are included in the official ranking. T
 
 ## 9. Official score
 
-For each feasible official instance, the score is the sum of the total travel distance and the total transition cost. Participants may submit any subset of the 150 solutions in a ZIP archive; submitting the complete set at once is not required.
+For each feasible official instance, the score is the sum of the total travel distance and the total transition cost. Participants may submit any subset of the 100 solutions in a ZIP archive; submitting the complete set at once is not required.
 
 The platform identifies the solutions present in the archive and evaluates them independently. A solution that is absent, unresolved, unreadable, or infeasible receives the same penalty of `100000` for its instance.
 
-The final score is the sum obtained across all 150 instances. Lower scores are better.
+The final score is the sum obtained across all 100 instances. Lower scores are better.
